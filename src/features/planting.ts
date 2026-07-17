@@ -13,10 +13,16 @@ export interface PlantingInput {
   planting_status: PlantingStatus;
 }
 
-export async function fetchPlantingRecords(page = 1, pageSize = 10): Promise<{ data: PlantingRecord[], count: number }> {
+export interface PlantingPage { rows: PlantingRecord[]; total: number; }
+
+export async function fetchPlantingRecords(
+  search = "",
+  page = 1,
+  pageSize = 12
+): Promise<PlantingPage> {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
-  const { data, count, error } = await supabase
+  let query = supabase
     .from("planting_records")
     .select(
       "*, crops(crop_name), farm_plots(plot_number, farms(farm_name, barangay))",
@@ -24,8 +30,13 @@ export async function fetchPlantingRecords(page = 1, pageSize = 10): Promise<{ d
     )
     .order("planting_date", { ascending: false })
     .range(from, to);
+  if (search.trim()) {
+    const term = `%${search.trim()}%`;
+    query = query.or(`crops.crop_name.ilike.${term},planting_status.ilike.${term}`);
+  }
+  const { data, error, count } = await query;
   if (error) throw error;
-  return { data: (data as PlantingRecord[]) ?? [], count: count ?? 0 };
+  return { rows: (data as PlantingRecord[]) ?? [], total: count ?? 0 };
 }
 
 export async function fetchPlotOptions(): Promise<FarmPlot[]> {
@@ -67,10 +78,15 @@ export interface HarvestInput {
   unit: string;
 }
 
-export async function fetchHarvests(page = 1, pageSize = 10): Promise<{ data: HarvestInventory[], count: number }> {
+export interface HarvestPage { rows: HarvestInventory[]; total: number; }
+
+export async function fetchHarvests(
+  page = 1,
+  pageSize = 12
+): Promise<HarvestPage> {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
-  const { data, count, error } = await supabase
+  const { data, error, count } = await supabase
     .from("harvest_inventory")
     .select(
       "*, planting_records(planting_id, planting_date, crops(crop_name), farm_plots(plot_number, farms(farm_name, barangay)))",
@@ -79,7 +95,7 @@ export async function fetchHarvests(page = 1, pageSize = 10): Promise<{ data: Ha
     .order("harvested_at", { ascending: false })
     .range(from, to);
   if (error) throw error;
-  return { data: (data as HarvestInventory[]) ?? [], count: count ?? 0 };
+  return { rows: (data as HarvestInventory[]) ?? [], total: count ?? 0 };
 }
 
 export async function fetchHarvestablePlantings(): Promise<PlantingRecord[]> {

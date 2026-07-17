@@ -10,20 +10,27 @@ export interface FarmInput {
   irrigation_type: IrrigationType | null;
 }
 
-export async function fetchFarms(search = "", page = 1, pageSize = 10): Promise<{ data: Farm[], count: number }> {
+export interface FarmPage { rows: Farm[]; total: number; }
+
+export async function fetchFarms(
+  search = "",
+  page = 1,
+  pageSize = 12
+): Promise<FarmPage> {
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
   let query = supabase
     .from("farms")
     .select("*, farmers(first_name, last_name)", { count: "exact" })
-    .order("farm_name");
+    .order("farm_name")
+    .range(from, to);
   if (search.trim()) {
     const term = `%${search.trim()}%`;
     query = query.or(`farm_name.ilike.${term},barangay.ilike.${term}`);
   }
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-  const { data, count, error } = await query.range(from, to);
+  const { data, error, count } = await query;
   if (error) throw error;
-  return { data: (data as Farm[]) ?? [], count: count ?? 0 };
+  return { rows: (data as Farm[]) ?? [], total: count ?? 0 };
 }
 
 export async function fetchFarmerOptions(): Promise<Pick<Farmer, "farmer_id" | "first_name" | "last_name">[]> {
@@ -65,20 +72,27 @@ export interface PlotInput {
   status: "ACTIVE" | "FALLOW";
 }
 
-export async function fetchPlots(search = "", page = 1, pageSize = 10): Promise<{ data: FarmPlot[], count: number }> {
+export interface PlotPage { rows: FarmPlot[]; total: number; }
+
+export async function fetchPlots(
+  search = "",
+  page = 1,
+  pageSize = 12
+): Promise<PlotPage> {
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
   let query = supabase
     .from("farm_plots")
     .select("*, farms(farm_name, barangay)", { count: "exact" })
-    .order("plot_id", { ascending: false });
+    .order("plot_id", { ascending: false })
+    .range(from, to);
   if (search.trim()) {
     const term = `%${search.trim()}%`;
     query = query.or(`plot_number.ilike.${term}`);
   }
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-  const { data, count, error } = await query.range(from, to);
+  const { data, error, count } = await query;
   if (error) throw error;
-  return { data: (data as FarmPlot[]) ?? [], count: count ?? 0 };
+  return { rows: (data as FarmPlot[]) ?? [], total: count ?? 0 };
 }
 
 export async function fetchFarmOptions(): Promise<Pick<Farm, "farm_id" | "farm_name" | "barangay">[]> {

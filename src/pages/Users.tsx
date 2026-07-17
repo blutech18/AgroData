@@ -1,6 +1,6 @@
 import * as React from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Power, Plus } from "lucide-react";
+import { Pencil, Power, Plus, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,11 +32,11 @@ import {
 } from "@/components/ui/select";
 import { LoadingState, EmptyState, ErrorState } from "@/components/shared/states";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { TablePagination } from "@/components/shared/TablePagination";
 import { useToast } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/useAuth";
 import { logActivity } from "@/lib/audit";
 import { formatDate } from "@/lib/utils";
-import { SimplePagination } from "@/components/shared/SimplePagination";
 import {
   createUserAccount,
   fetchRoles,
@@ -65,15 +65,28 @@ export default function UsersPage() {
   const [createOpen, setCreateOpen] = React.useState(false);
   const [statusTarget, setStatusTarget] = React.useState<AppUser | null>(null);
   const [form, setForm] = React.useState<NewUserInput>(emptyForm);
+  const [search, setSearch] = React.useState("");
+  const [debounced, setDebounced] = React.useState("");
   const [page, setPage] = React.useState(1);
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["users", page],
-    queryFn: () => fetchUsers(page, 10),
+  React.useEffect(() => {
+    const t = setTimeout(() => { setDebounced(search); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const PAGE_SIZE = 12;
+
+  const { data, isLoading, isError, isFetching } = useQuery({
+    queryKey: ["users", debounced, page],
+    queryFn: () => fetchUsers(debounced, page, PAGE_SIZE),
     placeholderData: keepPreviousData,
   });
   const roles = useQuery({ queryKey: ["roles"], queryFn: fetchRoles });
   const invalidate = () => qc.invalidateQueries({ queryKey: ["users"] });
+
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const users = data?.rows ?? [];
 
   const createMutation = useMutation({
     mutationFn: () => createUserAccount(form),
@@ -158,8 +171,6 @@ export default function UsersPage() {
     });
   };
 
-  const users = data?.data ?? [];
-  const total = data?.count ?? 0;
   const roleOptions = roles.data ?? [];
 
   // Shared profile fields used by both create and edit dialogs.
@@ -236,6 +247,16 @@ export default function UsersPage() {
         </Button>
       </PageHeader>
 
+      <div className="relative mb-4 max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search name, email, or username…"
+          className="pl-9"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
       <Card>
         {isLoading ? (
           <LoadingState />
@@ -252,8 +273,7 @@ export default function UsersPage() {
             }
           />
         ) : (
-          <>
-            <Table>
+          <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
@@ -301,10 +321,21 @@ export default function UsersPage() {
               ))}
             </TableBody>
           </Table>
-          <SimplePagination page={page} pageSize={10} total={total} onPageChange={setPage} />
-        </>
         )}
       </Card>
+
+      {/* Pagination */}
+      {!isLoading && !isError && (
+        <TablePagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={PAGE_SIZE}
+          isFetching={isFetching}
+          onPageChange={setPage}
+          label="users"
+        />
+      )}
 
       {/* Create dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

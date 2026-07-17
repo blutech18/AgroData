@@ -1,6 +1,6 @@
 import * as React from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,11 +30,11 @@ import {
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { LoadingState, EmptyState, ErrorState } from "@/components/shared/states";
+import { TablePagination } from "@/components/shared/TablePagination";
 import { useToast } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/useAuth";
 import { logActivity } from "@/lib/audit";
 import { formatDate, formatNumber } from "@/lib/utils";
-import { SimplePagination } from "@/components/shared/SimplePagination";
 import {
   createHarvest,
   deleteHarvest,
@@ -55,15 +55,21 @@ export default function HarvestPage() {
   const [toDelete, setToDelete] = React.useState<HarvestInventory | null>(null);
   const [page, setPage] = React.useState(1);
 
-  const { data, isLoading, isError } = useQuery({
+  const PAGE_SIZE = 12;
+
+  const { data, isLoading, isError, isFetching } = useQuery({
     queryKey: ["harvest", page],
-    queryFn: () => fetchHarvests(page, 10),
+    queryFn: () => fetchHarvests(page, PAGE_SIZE),
     placeholderData: keepPreviousData,
   });
   const plantings = useQuery({
     queryKey: ["harvestable-plantings"],
     queryFn: fetchHarvestablePlantings,
   });
+
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const harvests = data?.rows ?? [];
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["harvest"] });
@@ -107,8 +113,6 @@ export default function HarvestPage() {
     setDialogOpen(true);
   };
 
-  const harvests = data?.data ?? [];
-  const total = data?.count ?? 0;
 
   return (
     <div>
@@ -126,8 +130,7 @@ export default function HarvestPage() {
         ) : harvests.length === 0 ? (
           <EmptyState title="No harvest records" description="Record harvested quantities to track yield." />
         ) : (
-          <>
-            <Table>
+          <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Crop</TableHead>
@@ -165,10 +168,21 @@ export default function HarvestPage() {
               ))}
             </TableBody>
           </Table>
-          <SimplePagination page={page} pageSize={10} total={total} onPageChange={setPage} />
-        </>
         )}
       </Card>
+
+      {/* Pagination */}
+      {!isLoading && !isError && (
+        <TablePagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={PAGE_SIZE}
+          isFetching={isFetching}
+          onPageChange={setPage}
+          label="harvests"
+        />
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>

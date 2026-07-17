@@ -24,10 +24,10 @@ import {
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { LoadingState, EmptyState, ErrorState } from "@/components/shared/states";
+import { TablePagination } from "@/components/shared/TablePagination";
 import { useToast } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/useAuth";
 import { logActivity } from "@/lib/audit";
-import { SimplePagination } from "@/components/shared/SimplePagination";
 import {
   createCrop,
   deleteCrop,
@@ -52,19 +52,22 @@ export default function CropsPage() {
   const [page, setPage] = React.useState(1);
 
   React.useEffect(() => {
-    const t = setTimeout(() => {
-      setDebounced(search);
-      setPage(1);
-    }, 300);
+    const t = setTimeout(() => { setDebounced(search); setPage(1); }, 300);
     return () => clearTimeout(t);
   }, [search]);
 
-  const { data, isLoading, isError } = useQuery({
+  const PAGE_SIZE = 12;
+
+  const { data, isLoading, isError, isFetching } = useQuery({
     queryKey: ["crops", debounced, page],
-    queryFn: () => fetchCrops(debounced, page, 10),
+    queryFn: () => fetchCrops(debounced, page, PAGE_SIZE),
     placeholderData: keepPreviousData,
   });
   const invalidate = () => qc.invalidateQueries({ queryKey: ["crops"] });
+
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const crops = data?.rows ?? [];
 
   const saveMutation = useMutation({
     mutationFn: () => (editing ? updateCrop(editing.crop_id, form) : createCrop(form)),
@@ -119,8 +122,6 @@ export default function CropsPage() {
     setDialogOpen(true);
   };
 
-  const crops = data?.data ?? [];
-  const total = data?.count ?? 0;
 
   return (
     <div>
@@ -148,8 +149,7 @@ export default function CropsPage() {
         ) : crops.length === 0 ? (
           <EmptyState title="No crops yet" description="Add crop types to begin." />
         ) : (
-          <>
-            <Table>
+          <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Crop</TableHead>
@@ -185,10 +185,21 @@ export default function CropsPage() {
               ))}
             </TableBody>
           </Table>
-          <SimplePagination page={page} pageSize={10} total={total} onPageChange={setPage} />
-        </>
         )}
       </Card>
+
+      {/* Pagination */}
+      {!isLoading && !isError && (
+        <TablePagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={PAGE_SIZE}
+          isFetching={isFetching}
+          onPageChange={setPage}
+          label="crops"
+        />
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>

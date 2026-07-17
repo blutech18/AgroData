@@ -31,11 +31,11 @@ import {
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { LoadingState, EmptyState, ErrorState } from "@/components/shared/states";
+import { TablePagination } from "@/components/shared/TablePagination";
 import { useToast } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/useAuth";
 import { logActivity } from "@/lib/audit";
 import { formatNumber } from "@/lib/utils";
-import { SimplePagination } from "@/components/shared/SimplePagination";
 import {
   createFarm,
   deleteFarm,
@@ -68,19 +68,22 @@ export default function FarmsPage() {
   const [toDelete, setToDelete] = React.useState<Farm | null>(null);
 
   React.useEffect(() => {
-    const t = setTimeout(() => {
-      setDebounced(search);
-      setPage(1);
-    }, 300);
+    const t = setTimeout(() => { setDebounced(search); setPage(1); }, 300);
     return () => clearTimeout(t);
   }, [search]);
 
-  const { data, isLoading, isError } = useQuery({
+  const PAGE_SIZE = 12;
+
+  const { data, isLoading, isError, isFetching } = useQuery({
     queryKey: ["farms", debounced, page],
-    queryFn: () => fetchFarms(debounced, page, 10),
+    queryFn: () => fetchFarms(debounced, page, PAGE_SIZE),
     placeholderData: keepPreviousData,
   });
   const farmerOptions = useQuery({ queryKey: ["farmer-options"], queryFn: fetchFarmerOptions });
+
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const farms = data?.rows ?? [];
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["farms"] });
 
@@ -136,9 +139,6 @@ export default function FarmsPage() {
     setDialogOpen(true);
   };
 
-  const farms = data?.data ?? [];
-  const total = data?.count ?? 0;
-
   return (
     <div>
       <PageHeader title="Farms & Land Use" description="Agricultural land managed by registered farmers.">
@@ -171,8 +171,7 @@ export default function FarmsPage() {
         ) : farms.length === 0 ? (
           <EmptyState title="No farms found" description="Add a farm to start tracking land use." />
         ) : (
-          <>
-            <Table>
+          <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Farm</TableHead>
@@ -214,10 +213,21 @@ export default function FarmsPage() {
               ))}
             </TableBody>
           </Table>
-          <SimplePagination page={page} pageSize={10} total={total} onPageChange={setPage} />
-        </>
         )}
       </Card>
+
+      {/* Pagination */}
+      {!isLoading && !isError && (
+        <TablePagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={PAGE_SIZE}
+          isFetching={isFetching}
+          onPageChange={setPage}
+          label="farms"
+        />
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>

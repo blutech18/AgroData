@@ -2,16 +2,27 @@ import { createClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import type { AppUser, UserRole } from "@/types/database";
 
-export async function fetchUsers(page = 1, pageSize = 10): Promise<{ data: AppUser[], count: number }> {
+export interface UserPage { rows: AppUser[]; total: number; }
+
+export async function fetchUsers(
+  search = "",
+  page = 1,
+  pageSize = 12
+): Promise<UserPage> {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
-  const { data, count, error } = await supabase
+  let query = supabase
     .from("users")
     .select("*, user_roles(*)", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(from, to);
+  if (search.trim()) {
+    const term = `%${search.trim()}%`;
+    query = query.or(`first_name.ilike.${term},last_name.ilike.${term},email.ilike.${term},username.ilike.${term}`);
+  }
+  const { data, error, count } = await query;
   if (error) throw error;
-  return { data: (data as AppUser[]) ?? [], count: count ?? 0 };
+  return { rows: (data as AppUser[]) ?? [], total: count ?? 0 };
 }
 
 export async function fetchRoles(): Promise<UserRole[]> {

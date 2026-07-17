@@ -1,6 +1,6 @@
 import * as React from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,11 +31,11 @@ import {
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { LoadingState, EmptyState, ErrorState } from "@/components/shared/states";
+import { TablePagination } from "@/components/shared/TablePagination";
 import { useToast } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/useAuth";
 import { logActivity } from "@/lib/audit";
 import { formatDate, formatNumber } from "@/lib/utils";
-import { SimplePagination } from "@/components/shared/SimplePagination";
 import {
   createPlanting,
   deletePlanting,
@@ -44,7 +44,7 @@ import {
   updatePlanting,
   type PlantingInput,
 } from "@/features/planting";
-import { fetchCropOptions } from "@/features/crops";
+import { fetchCrops } from "@/features/crops";
 import type { PlantingRecord, PlantingStatus } from "@/types/database";
 
 const emptyForm: PlantingInput = {
@@ -73,15 +73,28 @@ export default function PlantingPage() {
   const [editing, setEditing] = React.useState<PlantingRecord | null>(null);
   const [form, setForm] = React.useState<PlantingInput>(emptyForm);
   const [toDelete, setToDelete] = React.useState<PlantingRecord | null>(null);
+  const [search, setSearch] = React.useState("");
+  const [debounced, setDebounced] = React.useState("");
   const [page, setPage] = React.useState(1);
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["planting", page],
-    queryFn: () => fetchPlantingRecords(page, 10),
+  React.useEffect(() => {
+    const t = setTimeout(() => { setDebounced(search); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const PAGE_SIZE = 12;
+
+  const { data, isLoading, isError, isFetching } = useQuery({
+    queryKey: ["planting", debounced, page],
+    queryFn: () => fetchPlantingRecords(debounced, page, PAGE_SIZE),
     placeholderData: keepPreviousData,
   });
   const plots = useQuery({ queryKey: ["plot-options"], queryFn: fetchPlotOptions });
-  const crops = useQuery({ queryKey: ["crop-options"], queryFn: fetchCropOptions });
+  const crops = useQuery({ queryKey: ["crops"], queryFn: () => fetchCrops() });
+
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const records = data?.rows ?? [];
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["planting"] });
@@ -139,9 +152,7 @@ export default function PlantingPage() {
     setDialogOpen(true);
   };
 
-  const records = data?.data ?? [];
-  const total = data?.count ?? 0;
-  const noPrereqs = (plots.data?.length ?? 0) === 0 || (crops.data?.length ?? 0) === 0;
+  const noPrereqs = (plots.data?.length ?? 0) === 0 || (crops.data?.rows?.length ?? 0) === 0;
 
   return (
     <div>
@@ -160,6 +171,16 @@ export default function PlantingPage() {
         </p>
       )}
 
+      <div className="relative mb-4 max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search crop, plot, farm, barangay, status…"
+          className="pl-9"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
       <Card>
         {isLoading ? (
           <LoadingState />
@@ -168,8 +189,7 @@ export default function PlantingPage() {
         ) : records.length === 0 ? (
           <EmptyState title="No planting records" description="Record a planting to begin monitoring." />
         ) : (
-          <>
-            <Table>
+          <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Crop</TableHead>
@@ -213,10 +233,21 @@ export default function PlantingPage() {
               ))}
             </TableBody>
           </Table>
-          <SimplePagination page={page} pageSize={10} total={total} onPageChange={setPage} />
-        </>
         )}
       </Card>
+
+      {/* Pagination */}
+      {!isLoading && !isError && (
+        <TablePagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={PAGE_SIZE}
+          isFetching={isFetching}
+          onPageChange={setPage}
+          label="records"
+        />
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>

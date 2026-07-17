@@ -7,23 +7,27 @@ export interface CropInput {
   expected_harvest_days: number | null;
 }
 
-export async function fetchCrops(search = "", page = 1, pageSize = 10): Promise<{ data: Crop[], count: number }> {
-  let query = supabase.from("crops").select("*", { count: "exact" }).order("crop_name");
+export interface CropPage { rows: Crop[]; total: number; }
+
+export async function fetchCrops(
+  search = "",
+  page = 1,
+  pageSize = 12
+): Promise<CropPage> {
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  let query = supabase
+    .from("crops")
+    .select("*", { count: "exact" })
+    .order("crop_name")
+    .range(from, to);
   if (search.trim()) {
     const term = `%${search.trim()}%`;
     query = query.or(`crop_name.ilike.${term},crop_category.ilike.${term}`);
   }
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-  const { data, count, error } = await query.range(from, to);
+  const { data, error, count } = await query;
   if (error) throw error;
-  return { data: (data as Crop[]) ?? [], count: count ?? 0 };
-}
-
-export async function fetchCropOptions(): Promise<Crop[]> {
-  const { data, error } = await supabase.from("crops").select("*").order("crop_name");
-  if (error) throw error;
-  return (data as Crop[]) ?? [];
+  return { rows: (data as Crop[]) ?? [], total: count ?? 0 };
 }
 
 export async function createCrop(input: CropInput): Promise<Crop> {

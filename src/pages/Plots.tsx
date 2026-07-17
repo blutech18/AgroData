@@ -31,11 +31,11 @@ import {
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { LoadingState, EmptyState, ErrorState } from "@/components/shared/states";
+import { TablePagination } from "@/components/shared/TablePagination";
 import { useToast } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/useAuth";
 import { logActivity } from "@/lib/audit";
 import { formatNumber } from "@/lib/utils";
-import { SimplePagination } from "@/components/shared/SimplePagination";
 import {
   createPlot,
   deletePlot,
@@ -66,19 +66,22 @@ export default function PlotsPage() {
   const [toDelete, setToDelete] = React.useState<FarmPlot | null>(null);
 
   React.useEffect(() => {
-    const t = setTimeout(() => {
-      setDebounced(search);
-      setPage(1);
-    }, 300);
+    const t = setTimeout(() => { setDebounced(search); setPage(1); }, 300);
     return () => clearTimeout(t);
   }, [search]);
 
-  const { data, isLoading, isError } = useQuery({
+  const PAGE_SIZE = 12;
+
+  const { data, isLoading, isError, isFetching } = useQuery({
     queryKey: ["plots", debounced, page],
-    queryFn: () => fetchPlots(debounced, page, 10),
+    queryFn: () => fetchPlots(debounced, page, PAGE_SIZE),
     placeholderData: keepPreviousData,
   });
   const farmOptions = useQuery({ queryKey: ["farm-options"], queryFn: fetchFarmOptions });
+
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const plots = data?.rows ?? [];
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["plots"] });
@@ -135,8 +138,6 @@ export default function PlotsPage() {
     setDialogOpen(true);
   };
 
-  const plots = data?.data ?? [];
-  const total = data?.count ?? 0;
   const noFarms = (farmOptions.data?.length ?? 0) === 0;
 
   return (
@@ -174,8 +175,7 @@ export default function PlotsPage() {
         ) : plots.length === 0 ? (
           <EmptyState title="No plots found" description="Add a plot to start recording plantings." />
         ) : (
-          <>
-            <Table>
+          <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Plot No.</TableHead>
@@ -215,10 +215,21 @@ export default function PlotsPage() {
               ))}
             </TableBody>
           </Table>
-          <SimplePagination page={page} pageSize={10} total={total} onPageChange={setPage} />
-        </>
         )}
       </Card>
+
+      {/* Pagination */}
+      {!isLoading && !isError && (
+        <TablePagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={PAGE_SIZE}
+          isFetching={isFetching}
+          onPageChange={setPage}
+          label="plots"
+        />
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
