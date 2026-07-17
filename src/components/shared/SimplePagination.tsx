@@ -17,27 +17,29 @@ export function SimplePagination({
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="flex items-center justify-between px-2 py-4">
-      <div className="text-sm text-muted-foreground">
+    <div className="flex items-center justify-between px-4 py-3 border-t">
+      <div className="text-xs text-muted-foreground">
         Showing {total === 0 ? 0 : (page - 1) * pageSize + 1} to{" "}
         {Math.min(page * pageSize, total)} of {total} entries
       </div>
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center gap-1">
         <Button
-          variant="outline"
-          size="sm"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
         >
           <ChevronLeft className="h-4 w-4" />
           <span className="sr-only">Previous Page</span>
         </Button>
-        <div className="text-sm font-medium">
+        <div className="text-xs font-medium text-muted-foreground px-2">
           Page {page} of {totalPages}
         </div>
         <Button
-          variant="outline"
-          size="sm"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
         >
