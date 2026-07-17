@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { logActivity } from "@/lib/audit";
 import { clearAttempts, getLockRemaining, registerFailure } from "@/lib/loginGuard";
+import { ModeToggle } from "@/components/mode-toggle";
 
 type Mode = "login" | "forgot";
 
@@ -222,6 +223,13 @@ export default function LoginPage() {
         <p className="mt-6 text-center text-xs text-muted-foreground">
           Authorized OMA personnel only. All activity is logged.
         </p>
+      </div>
+
+      {/* Floating dark/light toggle */}
+      <div className="fixed bottom-5 right-5">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-background/80 shadow-lg ring-1 ring-border backdrop-blur-sm">
+          <ModeToggle />
+        </div>
       </div>
     </div>
   );
