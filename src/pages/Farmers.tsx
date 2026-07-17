@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ import { useToast } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/useAuth";
 import { logActivity } from "@/lib/audit";
 import { formatDate } from "@/lib/utils";
+import { SimplePagination } from "@/components/shared/SimplePagination";
 import {
   createFarmer,
   deleteFarmer,
@@ -60,19 +61,24 @@ export default function FarmersPage() {
   const { profile } = useAuth();
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
+  const [page, setPage] = React.useState(1);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Farmer | null>(null);
   const [form, setForm] = React.useState<FarmerInput>(emptyForm);
   const [toDelete, setToDelete] = React.useState<Farmer | null>(null);
 
   React.useEffect(() => {
-    const t = setTimeout(() => setDebounced(search), 300);
+    const t = setTimeout(() => {
+      setDebounced(search);
+      setPage(1);
+    }, 300);
     return () => clearTimeout(t);
   }, [search]);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["farmers", debounced],
-    queryFn: () => fetchFarmers(debounced),
+    queryKey: ["farmers", debounced, page],
+    queryFn: () => fetchFarmers(debounced, page, 10),
+    placeholderData: keepPreviousData,
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["farmers"] });
@@ -151,7 +157,8 @@ export default function FarmersPage() {
     setDialogOpen(true);
   };
 
-  const farmers = data ?? [];
+  const farmers = data?.data ?? [];
+  const total = data?.count ?? 0;
 
   return (
     <div>
@@ -190,7 +197,8 @@ export default function FarmersPage() {
             }
           />
         ) : (
-          <Table>
+          <>
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
@@ -234,6 +242,8 @@ export default function FarmersPage() {
               ))}
             </TableBody>
           </Table>
+          <SimplePagination page={page} pageSize={10} total={total} onPageChange={setPage} />
+        </>
         )}
       </Card>
 

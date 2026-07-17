@@ -2,13 +2,16 @@ import { createClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import type { AppUser, UserRole } from "@/types/database";
 
-export async function fetchUsers(): Promise<AppUser[]> {
-  const { data, error } = await supabase
+export async function fetchUsers(page = 1, pageSize = 10): Promise<{ data: AppUser[], count: number }> {
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, count, error } = await supabase
     .from("users")
-    .select("*, user_roles(*)")
-    .order("created_at", { ascending: false });
+    .select("*, user_roles(*)", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(from, to);
   if (error) throw error;
-  return (data as AppUser[]) ?? [];
+  return { data: (data as AppUser[]) ?? [], count: count ?? 0 };
 }
 
 export async function fetchRoles(): Promise<UserRole[]> {

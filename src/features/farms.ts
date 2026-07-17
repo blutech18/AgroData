@@ -10,18 +10,20 @@ export interface FarmInput {
   irrigation_type: IrrigationType | null;
 }
 
-export async function fetchFarms(search = ""): Promise<Farm[]> {
+export async function fetchFarms(search = "", page = 1, pageSize = 10): Promise<{ data: Farm[], count: number }> {
   let query = supabase
     .from("farms")
-    .select("*, farmers(first_name, last_name)")
+    .select("*, farmers(first_name, last_name)", { count: "exact" })
     .order("farm_name");
   if (search.trim()) {
     const term = `%${search.trim()}%`;
     query = query.or(`farm_name.ilike.${term},barangay.ilike.${term}`);
   }
-  const { data, error } = await query;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, count, error } = await query.range(from, to);
   if (error) throw error;
-  return (data as Farm[]) ?? [];
+  return { data: (data as Farm[]) ?? [], count: count ?? 0 };
 }
 
 export async function fetchFarmerOptions(): Promise<Pick<Farmer, "farmer_id" | "first_name" | "last_name">[]> {
@@ -63,18 +65,20 @@ export interface PlotInput {
   status: "ACTIVE" | "FALLOW";
 }
 
-export async function fetchPlots(search = ""): Promise<FarmPlot[]> {
+export async function fetchPlots(search = "", page = 1, pageSize = 10): Promise<{ data: FarmPlot[], count: number }> {
   let query = supabase
     .from("farm_plots")
-    .select("*, farms(farm_name, barangay)")
+    .select("*, farms(farm_name, barangay)", { count: "exact" })
     .order("plot_id", { ascending: false });
   if (search.trim()) {
     const term = `%${search.trim()}%`;
     query = query.or(`plot_number.ilike.${term}`);
   }
-  const { data, error } = await query;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, count, error } = await query.range(from, to);
   if (error) throw error;
-  return (data as FarmPlot[]) ?? [];
+  return { data: (data as FarmPlot[]) ?? [], count: count ?? 0 };
 }
 
 export async function fetchFarmOptions(): Promise<Pick<Farm, "farm_id" | "farm_name" | "barangay">[]> {

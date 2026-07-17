@@ -11,17 +11,20 @@ export interface FarmerInput {
   barangay: string;
 }
 
-export async function fetchFarmers(search = ""): Promise<Farmer[]> {
-  let query = supabase.from("farmers").select("*").order("last_name", { ascending: true });
+export async function fetchFarmers(search = "", page = 1, pageSize = 10): Promise<{ data: Farmer[], count: number }> {
+  let query = supabase.from("farmers").select("*", { count: "exact" }).order("last_name", { ascending: true });
   if (search.trim()) {
     const term = `%${search.trim()}%`;
     query = query.or(
       `first_name.ilike.${term},last_name.ilike.${term},barangay.ilike.${term},contact_no.ilike.${term}`
     );
   }
-  const { data, error } = await query;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, count, error } = await query.range(from, to);
+  
   if (error) throw error;
-  return (data as Farmer[]) ?? [];
+  return { data: (data as Farmer[]) ?? [], count: count ?? 0 };
 }
 
 export async function createFarmer(input: FarmerInput): Promise<Farmer> {

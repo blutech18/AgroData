@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ import { useToast } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/useAuth";
 import { logActivity } from "@/lib/audit";
 import { formatNumber } from "@/lib/utils";
+import { SimplePagination } from "@/components/shared/SimplePagination";
 import {
   createFarm,
   deleteFarm,
@@ -60,19 +61,24 @@ export default function FarmsPage() {
   const { profile } = useAuth();
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
+  const [page, setPage] = React.useState(1);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Farm | null>(null);
   const [form, setForm] = React.useState<FarmInput>(emptyForm);
   const [toDelete, setToDelete] = React.useState<Farm | null>(null);
 
   React.useEffect(() => {
-    const t = setTimeout(() => setDebounced(search), 300);
+    const t = setTimeout(() => {
+      setDebounced(search);
+      setPage(1);
+    }, 300);
     return () => clearTimeout(t);
   }, [search]);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["farms", debounced],
-    queryFn: () => fetchFarms(debounced),
+    queryKey: ["farms", debounced, page],
+    queryFn: () => fetchFarms(debounced, page, 10),
+    placeholderData: keepPreviousData,
   });
   const farmerOptions = useQuery({ queryKey: ["farmer-options"], queryFn: fetchFarmerOptions });
 
@@ -130,7 +136,8 @@ export default function FarmsPage() {
     setDialogOpen(true);
   };
 
-  const farms = data ?? [];
+  const farms = data?.data ?? [];
+  const total = data?.count ?? 0;
 
   return (
     <div>
@@ -164,7 +171,8 @@ export default function FarmsPage() {
         ) : farms.length === 0 ? (
           <EmptyState title="No farms found" description="Add a farm to start tracking land use." />
         ) : (
-          <Table>
+          <>
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Farm</TableHead>
@@ -206,6 +214,8 @@ export default function FarmsPage() {
               ))}
             </TableBody>
           </Table>
+          <SimplePagination page={page} pageSize={10} total={total} onPageChange={setPage} />
+        </>
         )}
       </Card>
 

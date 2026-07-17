@@ -1,6 +1,6 @@
 import * as React from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, Search } from "lucide-react";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ import { useToast } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/useAuth";
 import { logActivity } from "@/lib/audit";
 import { formatDate, formatNumber } from "@/lib/utils";
+import { SimplePagination } from "@/components/shared/SimplePagination";
 import {
   createHarvest,
   deleteHarvest,
@@ -52,9 +53,13 @@ export default function HarvestPage() {
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [form, setForm] = React.useState<HarvestInput>(emptyForm);
   const [toDelete, setToDelete] = React.useState<HarvestInventory | null>(null);
-  const [search, setSearch] = React.useState("");
+  const [page, setPage] = React.useState(1);
 
-  const { data, isLoading, isError } = useQuery({ queryKey: ["harvest"], queryFn: fetchHarvests });
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["harvest", page],
+    queryFn: () => fetchHarvests(page, 10),
+    placeholderData: keepPreviousData,
+  });
   const plantings = useQuery({
     queryKey: ["harvestable-plantings"],
     queryFn: fetchHarvestablePlantings,
@@ -102,17 +107,8 @@ export default function HarvestPage() {
     setDialogOpen(true);
   };
 
-  const term = search.trim().toLowerCase();
-  const harvests = (data ?? []).filter((h) => {
-    if (!term) return true;
-    const pr = h.planting_records;
-    return (
-      (pr?.crops?.crop_name ?? "").toLowerCase().includes(term) ||
-      (pr?.farm_plots?.plot_number ?? "").toLowerCase().includes(term) ||
-      (pr?.farm_plots?.farms?.farm_name ?? "").toLowerCase().includes(term) ||
-      (h.unit ?? "").toLowerCase().includes(term)
-    );
-  });
+  const harvests = data?.data ?? [];
+  const total = data?.count ?? 0;
 
   return (
     <div>
@@ -122,16 +118,6 @@ export default function HarvestPage() {
         </Button>
       </PageHeader>
 
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search crop, plot, farm, unit…"
-          className="pl-9"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
-
       <Card>
         {isLoading ? (
           <LoadingState />
@@ -140,7 +126,8 @@ export default function HarvestPage() {
         ) : harvests.length === 0 ? (
           <EmptyState title="No harvest records" description="Record harvested quantities to track yield." />
         ) : (
-          <Table>
+          <>
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Crop</TableHead>
@@ -178,6 +165,8 @@ export default function HarvestPage() {
               ))}
             </TableBody>
           </Table>
+          <SimplePagination page={page} pageSize={10} total={total} onPageChange={setPage} />
+        </>
         )}
       </Card>
 

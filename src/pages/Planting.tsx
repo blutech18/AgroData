@@ -1,6 +1,6 @@
 import * as React from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,7 @@ import { useToast } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/useAuth";
 import { logActivity } from "@/lib/audit";
 import { formatDate, formatNumber } from "@/lib/utils";
+import { SimplePagination } from "@/components/shared/SimplePagination";
 import {
   createPlanting,
   deletePlanting,
@@ -43,7 +44,7 @@ import {
   updatePlanting,
   type PlantingInput,
 } from "@/features/planting";
-import { fetchCrops } from "@/features/crops";
+import { fetchCropOptions } from "@/features/crops";
 import type { PlantingRecord, PlantingStatus } from "@/types/database";
 
 const emptyForm: PlantingInput = {
@@ -72,14 +73,15 @@ export default function PlantingPage() {
   const [editing, setEditing] = React.useState<PlantingRecord | null>(null);
   const [form, setForm] = React.useState<PlantingInput>(emptyForm);
   const [toDelete, setToDelete] = React.useState<PlantingRecord | null>(null);
-  const [search, setSearch] = React.useState("");
+  const [page, setPage] = React.useState(1);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["planting"],
-    queryFn: fetchPlantingRecords,
+    queryKey: ["planting", page],
+    queryFn: () => fetchPlantingRecords(page, 10),
+    placeholderData: keepPreviousData,
   });
   const plots = useQuery({ queryKey: ["plot-options"], queryFn: fetchPlotOptions });
-  const crops = useQuery({ queryKey: ["crops"], queryFn: fetchCrops });
+  const crops = useQuery({ queryKey: ["crop-options"], queryFn: fetchCropOptions });
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["planting"] });
@@ -137,17 +139,8 @@ export default function PlantingPage() {
     setDialogOpen(true);
   };
 
-  const term = search.trim().toLowerCase();
-  const records = (data ?? []).filter((p) => {
-    if (!term) return true;
-    return (
-      (p.crops?.crop_name ?? "").toLowerCase().includes(term) ||
-      (p.farm_plots?.plot_number ?? "").toLowerCase().includes(term) ||
-      (p.farm_plots?.farms?.farm_name ?? "").toLowerCase().includes(term) ||
-      (p.farm_plots?.farms?.barangay ?? "").toLowerCase().includes(term) ||
-      p.planting_status.toLowerCase().includes(term)
-    );
-  });
+  const records = data?.data ?? [];
+  const total = data?.count ?? 0;
   const noPrereqs = (plots.data?.length ?? 0) === 0 || (crops.data?.length ?? 0) === 0;
 
   return (
@@ -167,16 +160,6 @@ export default function PlantingPage() {
         </p>
       )}
 
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search crop, plot, farm, barangay, status…"
-          className="pl-9"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
-
       <Card>
         {isLoading ? (
           <LoadingState />
@@ -185,7 +168,8 @@ export default function PlantingPage() {
         ) : records.length === 0 ? (
           <EmptyState title="No planting records" description="Record a planting to begin monitoring." />
         ) : (
-          <Table>
+          <>
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Crop</TableHead>
@@ -229,6 +213,8 @@ export default function PlantingPage() {
               ))}
             </TableBody>
           </Table>
+          <SimplePagination page={page} pageSize={10} total={total} onPageChange={setPage} />
+        </>
         )}
       </Card>
 

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Power, Plus } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ import { useToast } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/useAuth";
 import { logActivity } from "@/lib/audit";
 import { formatDate } from "@/lib/utils";
+import { SimplePagination } from "@/components/shared/SimplePagination";
 import {
   createUserAccount,
   fetchRoles,
@@ -64,8 +65,13 @@ export default function UsersPage() {
   const [createOpen, setCreateOpen] = React.useState(false);
   const [statusTarget, setStatusTarget] = React.useState<AppUser | null>(null);
   const [form, setForm] = React.useState<NewUserInput>(emptyForm);
+  const [page, setPage] = React.useState(1);
 
-  const { data, isLoading, isError } = useQuery({ queryKey: ["users"], queryFn: fetchUsers });
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["users", page],
+    queryFn: () => fetchUsers(page, 10),
+    placeholderData: keepPreviousData,
+  });
   const roles = useQuery({ queryKey: ["roles"], queryFn: fetchRoles });
   const invalidate = () => qc.invalidateQueries({ queryKey: ["users"] });
 
@@ -152,7 +158,8 @@ export default function UsersPage() {
     });
   };
 
-  const users = data ?? [];
+  const users = data?.data ?? [];
+  const total = data?.count ?? 0;
   const roleOptions = roles.data ?? [];
 
   // Shared profile fields used by both create and edit dialogs.
@@ -245,7 +252,8 @@ export default function UsersPage() {
             }
           />
         ) : (
-          <Table>
+          <>
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
@@ -293,6 +301,8 @@ export default function UsersPage() {
               ))}
             </TableBody>
           </Table>
+          <SimplePagination page={page} pageSize={10} total={total} onPageChange={setPage} />
+        </>
         )}
       </Card>
 

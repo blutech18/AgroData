@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ import { LoadingState, EmptyState, ErrorState } from "@/components/shared/states
 import { useToast } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/useAuth";
 import { logActivity } from "@/lib/audit";
+import { SimplePagination } from "@/components/shared/SimplePagination";
 import {
   createCrop,
   deleteCrop,
@@ -47,8 +48,22 @@ export default function CropsPage() {
   const [form, setForm] = React.useState<CropInput>(emptyForm);
   const [toDelete, setToDelete] = React.useState<Crop | null>(null);
   const [search, setSearch] = React.useState("");
+  const [debounced, setDebounced] = React.useState("");
+  const [page, setPage] = React.useState(1);
 
-  const { data, isLoading, isError } = useQuery({ queryKey: ["crops"], queryFn: fetchCrops });
+  React.useEffect(() => {
+    const t = setTimeout(() => {
+      setDebounced(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["crops", debounced, page],
+    queryFn: () => fetchCrops(debounced, page, 10),
+    placeholderData: keepPreviousData,
+  });
   const invalidate = () => qc.invalidateQueries({ queryKey: ["crops"] });
 
   const saveMutation = useMutation({
@@ -104,13 +119,8 @@ export default function CropsPage() {
     setDialogOpen(true);
   };
 
-  const term = search.trim().toLowerCase();
-  const crops = (data ?? []).filter(
-    (c) =>
-      !term ||
-      c.crop_name.toLowerCase().includes(term) ||
-      (c.crop_category ?? "").toLowerCase().includes(term)
-  );
+  const crops = data?.data ?? [];
+  const total = data?.count ?? 0;
 
   return (
     <div>
@@ -138,7 +148,8 @@ export default function CropsPage() {
         ) : crops.length === 0 ? (
           <EmptyState title="No crops yet" description="Add crop types to begin." />
         ) : (
-          <Table>
+          <>
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Crop</TableHead>
@@ -174,6 +185,8 @@ export default function CropsPage() {
               ))}
             </TableBody>
           </Table>
+          <SimplePagination page={page} pageSize={10} total={total} onPageChange={setPage} />
+        </>
         )}
       </Card>
 

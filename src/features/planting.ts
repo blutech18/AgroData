@@ -13,15 +13,19 @@ export interface PlantingInput {
   planting_status: PlantingStatus;
 }
 
-export async function fetchPlantingRecords(): Promise<PlantingRecord[]> {
-  const { data, error } = await supabase
+export async function fetchPlantingRecords(page = 1, pageSize = 10): Promise<{ data: PlantingRecord[], count: number }> {
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, count, error } = await supabase
     .from("planting_records")
     .select(
-      "*, crops(crop_name), farm_plots(plot_number, farms(farm_name, barangay))"
+      "*, crops(crop_name), farm_plots(plot_number, farms(farm_name, barangay))",
+      { count: "exact" }
     )
-    .order("planting_date", { ascending: false });
+    .order("planting_date", { ascending: false })
+    .range(from, to);
   if (error) throw error;
-  return (data as PlantingRecord[]) ?? [];
+  return { data: (data as PlantingRecord[]) ?? [], count: count ?? 0 };
 }
 
 export async function fetchPlotOptions(): Promise<FarmPlot[]> {
@@ -63,15 +67,19 @@ export interface HarvestInput {
   unit: string;
 }
 
-export async function fetchHarvests(): Promise<HarvestInventory[]> {
-  const { data, error } = await supabase
+export async function fetchHarvests(page = 1, pageSize = 10): Promise<{ data: HarvestInventory[], count: number }> {
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, count, error } = await supabase
     .from("harvest_inventory")
     .select(
-      "*, planting_records(planting_id, planting_date, crops(crop_name), farm_plots(plot_number, farms(farm_name, barangay)))"
+      "*, planting_records(planting_id, planting_date, crops(crop_name), farm_plots(plot_number, farms(farm_name, barangay)))",
+      { count: "exact" }
     )
-    .order("harvested_at", { ascending: false });
+    .order("harvested_at", { ascending: false })
+    .range(from, to);
   if (error) throw error;
-  return (data as HarvestInventory[]) ?? [];
+  return { data: (data as HarvestInventory[]) ?? [], count: count ?? 0 };
 }
 
 export async function fetchHarvestablePlantings(): Promise<PlantingRecord[]> {
