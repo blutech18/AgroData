@@ -33,7 +33,7 @@ export function AboutDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl gap-0 overflow-hidden p-0 [&>button]:text-foreground/70 [&>button]:hover:text-foreground">
+      <DialogContent className="w-[95vw] max-w-5xl gap-0 overflow-hidden p-0 sm:w-full [&>button]:text-foreground/70 [&>button]:hover:text-foreground">
         {/* Banner — adapts to light/dark */}
         <div className="relative flex items-center gap-4 border-b bg-gradient-to-r from-emerald-100 via-emerald-50 to-emerald-100 dark:from-emerald-900/60 dark:via-emerald-950 dark:to-emerald-900/60 px-6 py-5">
           {/* Logo in a white circle so it renders correctly on any background */}
