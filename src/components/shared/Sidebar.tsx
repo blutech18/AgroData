@@ -16,7 +16,7 @@ export function Sidebar({ onNavigate, collapsed = false }: SidebarProps) {
     <aside
       className={cn(
         "flex h-full flex-col overflow-hidden border-r transition-[width] duration-300 ease-in-out",
-        "bg-gradient-to-b from-emerald-50 via-emerald-100 to-emerald-200",
+        "bg-gradient-to-b from-emerald-50 via-emerald-100 to-emerald-200 dark:from-emerald-950 dark:via-emerald-900 dark:to-emerald-950",
         collapsed ? "w-16" : "w-64"
       )}
     >
