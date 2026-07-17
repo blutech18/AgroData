@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 150 25% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 150 25% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 150 25% 12%;
+    --primary: 142 71% 29%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 140 30% 96%;
+    --secondary-foreground: 150 25% 18%;
+    --muted: 140 20% 96%;
+    --muted-foreground: 150 8% 42%;
+    --accent: 84 60% 92%;
+    --accent-foreground: 150 25% 18%;
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 150 12% 88%;
+    --input: 150 12% 88%;
+    --ring: 142 71% 29%;
+    --radius: 0.6rem;
+  }
+
+  .dark {
+    --background: 150 25% 8%;
+    --foreground: 0 0% 98%;
+    --card: 150 24% 11%;
+    --card-foreground: 0 0% 98%;
+    --popover: 150 24% 11%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 142 60% 45%;
+    --primary-foreground: 150 25% 8%;
+    --secondary: 150 15% 18%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 150 15% 18%;
+    --muted-foreground: 150 8% 65%;
+    --accent: 150 15% 20%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 150 15% 20%;
+    --input: 150 15% 22%;
+    --ring: 142 60% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@media print {
+  aside,
+  header {
+    display: none !important;
+  }
+  main {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+}
+
+/* Table alignment: center every column (header + data) except the first,
+   which stays left-aligned. Applies to all app tables, responsively. */
+.agro-table th,
+.agro-table td {
+  text-align: center;
+}
+.agro-table th:first-child,
+.agro-table td:first-child {
+  text-align: left;
+}
