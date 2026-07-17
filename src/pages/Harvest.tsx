@@ -1,6 +1,6 @@
 import * as React from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, Search } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -130,8 +130,9 @@ export default function HarvestPage() {
         ) : harvests.length === 0 ? (
           <EmptyState title="No harvest records" description="Record harvested quantities to track yield." />
         ) : (
-          <Table>
-            <TableHeader>
+          <>
+            <Table>
+              <TableHeader>
               <TableRow>
                 <TableHead>Crop</TableHead>
                 <TableHead>Plot / Farm</TableHead>
@@ -168,21 +169,18 @@ export default function HarvestPage() {
               ))}
             </TableBody>
           </Table>
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            isFetching={isFetching}
+            onPageChange={setPage}
+            label="harvests"
+          />
+          </>
         )}
       </Card>
-
-      {/* Pagination */}
-      {!isLoading && !isError && (
-        <TablePagination
-          page={page}
-          totalPages={totalPages}
-          total={total}
-          pageSize={PAGE_SIZE}
-          isFetching={isFetching}
-          onPageChange={setPage}
-          label="harvests"
-        />
-      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>

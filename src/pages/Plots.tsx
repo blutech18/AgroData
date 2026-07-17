@@ -175,8 +175,9 @@ export default function PlotsPage() {
         ) : plots.length === 0 ? (
           <EmptyState title="No plots found" description="Add a plot to start recording plantings." />
         ) : (
-          <Table>
-            <TableHeader>
+          <>
+            <Table>
+              <TableHeader>
               <TableRow>
                 <TableHead>Plot No.</TableHead>
                 <TableHead>Farm</TableHead>
@@ -215,21 +216,18 @@ export default function PlotsPage() {
               ))}
             </TableBody>
           </Table>
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            isFetching={isFetching}
+            onPageChange={setPage}
+            label="plots"
+          />
+          </>
         )}
       </Card>
-
-      {/* Pagination */}
-      {!isLoading && !isError && (
-        <TablePagination
-          page={page}
-          totalPages={totalPages}
-          total={total}
-          pageSize={PAGE_SIZE}
-          isFetching={isFetching}
-          onPageChange={setPage}
-          label="plots"
-        />
-      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>

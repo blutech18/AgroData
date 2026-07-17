@@ -273,8 +273,9 @@ export default function UsersPage() {
             }
           />
         ) : (
-          <Table>
-            <TableHeader>
+          <>
+            <Table>
+              <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Username</TableHead>
@@ -321,21 +322,18 @@ export default function UsersPage() {
               ))}
             </TableBody>
           </Table>
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            isFetching={isFetching}
+            onPageChange={setPage}
+            label="users"
+          />
+          </>
         )}
       </Card>
-
-      {/* Pagination */}
-      {!isLoading && !isError && (
-        <TablePagination
-          page={page}
-          totalPages={totalPages}
-          total={total}
-          pageSize={PAGE_SIZE}
-          isFetching={isFetching}
-          onPageChange={setPage}
-          label="users"
-        />
-      )}
 
       {/* Create dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

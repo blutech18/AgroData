@@ -149,8 +149,9 @@ export default function CropsPage() {
         ) : crops.length === 0 ? (
           <EmptyState title="No crops yet" description="Add crop types to begin." />
         ) : (
-          <Table>
-            <TableHeader>
+          <>
+            <Table>
+              <TableHeader>
               <TableRow>
                 <TableHead>Crop</TableHead>
                 <TableHead>Category</TableHead>
@@ -185,21 +186,18 @@ export default function CropsPage() {
               ))}
             </TableBody>
           </Table>
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            isFetching={isFetching}
+            onPageChange={setPage}
+            label="crops"
+          />
+          </>
         )}
       </Card>
-
-      {/* Pagination */}
-      {!isLoading && !isError && (
-        <TablePagination
-          page={page}
-          totalPages={totalPages}
-          total={total}
-          pageSize={PAGE_SIZE}
-          isFetching={isFetching}
-          onPageChange={setPage}
-          label="crops"
-        />
-      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>

@@ -171,8 +171,9 @@ export default function FarmsPage() {
         ) : farms.length === 0 ? (
           <EmptyState title="No farms found" description="Add a farm to start tracking land use." />
         ) : (
-          <Table>
-            <TableHeader>
+          <>
+            <Table>
+              <TableHeader>
               <TableRow>
                 <TableHead>Farm</TableHead>
                 <TableHead>Owner</TableHead>
@@ -213,21 +214,18 @@ export default function FarmsPage() {
               ))}
             </TableBody>
           </Table>
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            isFetching={isFetching}
+            onPageChange={setPage}
+            label="farms"
+          />
+          </>
         )}
       </Card>
-
-      {/* Pagination */}
-      {!isLoading && !isError && (
-        <TablePagination
-          page={page}
-          totalPages={totalPages}
-          total={total}
-          pageSize={PAGE_SIZE}
-          isFetching={isFetching}
-          onPageChange={setPage}
-          label="farms"
-        />
-      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>

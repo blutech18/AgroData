@@ -189,8 +189,9 @@ export default function PlantingPage() {
         ) : records.length === 0 ? (
           <EmptyState title="No planting records" description="Record a planting to begin monitoring." />
         ) : (
-          <Table>
-            <TableHeader>
+          <>
+            <Table>
+              <TableHeader>
               <TableRow>
                 <TableHead>Crop</TableHead>
                 <TableHead>Plot / Farm</TableHead>
@@ -233,21 +234,18 @@ export default function PlantingPage() {
               ))}
             </TableBody>
           </Table>
+          <TablePagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            isFetching={isFetching}
+            onPageChange={setPage}
+            label="records"
+          />
+          </>
         )}
       </Card>
-
-      {/* Pagination */}
-      {!isLoading && !isError && (
-        <TablePagination
-          page={page}
-          totalPages={totalPages}
-          total={total}
-          pageSize={PAGE_SIZE}
-          isFetching={isFetching}
-          onPageChange={setPage}
-          label="records"
-        />
-      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
@@ -294,7 +292,7 @@ export default function PlantingPage() {
                     <SelectValue placeholder="Select crop" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(crops.data ?? []).map((c) => (
+                    {(crops.data?.rows ?? []).map((c) => (
                       <SelectItem key={c.crop_id} value={String(c.crop_id)}>
                         {c.crop_name}
                       </SelectItem>
