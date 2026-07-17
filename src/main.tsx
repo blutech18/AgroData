@@ -5,6 +5,7 @@ import { BrowserRouter } from "react-router-dom";
 import { queryClient } from "@/lib/queryClient";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ToastProvider } from "@/components/ui/toaster";
+import { ThemeProvider } from "@/components/theme-provider";
 import App from "./App";
 import "./index.css";
 
@@ -13,9 +14,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <ToastProvider>
-            <App />
-          </ToastProvider>
+          <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+            <ToastProvider>
+              <App />
+            </ToastProvider>
+          </ThemeProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

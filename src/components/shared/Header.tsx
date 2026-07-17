@@ -5,6 +5,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { AboutDialog } from "@/components/shared/AboutDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { logActivity } from "@/lib/audit";
+import { ModeToggle } from "@/components/mode-toggle";
 
 export function Header({ onMenuClick }: { onMenuClick: () => void }) {
   const { profile, signOut } = useAuth();
@@ -57,6 +58,7 @@ export function Header({ onMenuClick }: { onMenuClick: () => void }) {
         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
           {initials || "?"}
         </div>
+        <ModeToggle />
         <Button
           variant="ghost"
           size="icon"
