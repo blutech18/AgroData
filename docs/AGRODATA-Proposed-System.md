@@ -620,6 +620,19 @@ Backup/restore originally covered only the crop-era tables, so sector data would
 
 > Cross-reference: [Section 4.6](#46-backup--restore-coverage-migration-0008_backup_sector_supportsql) covers backup parity for the sector tables.
 
-### 4.9 Verification
+### 4.9 Function EXECUTE hardening (migrations `0010`, `0011`)
 
-`npm run typecheck` and `npm run build` both pass. Edge Functions must be deployed (`supabase functions deploy generate-report` and `supabase functions deploy compute-statistics`) for report generation and statistics computation to run in a live environment.
+`supabase db advisors --type security` reported that Postgres' default PUBLIC grant left every `SECURITY DEFINER` helper callable by the `anon` role over REST (e.g. `POST /rest/v1/rpc/resync_identity_sequences`, which performs writes). Migration `0010` revokes the anon/PUBLIC grants, and additionally makes `resync_identity_sequences()` re-check `is_admin()` internally, since the restore screen is admin-only in the UI but the RPC endpoint is directly reachable. Migration `0011` removes the last unnecessary grant: `current_role_name()` is only called from inside `is_admin()` (SECURITY DEFINER, so it runs with the owner's rights), so no role needs EXECUTE on it. `is_admin()` and `has_active_profile()` keep their `authenticated` grant because they appear in RLS policy expressions, which are evaluated as the calling role.
+
+Verified in-database by impersonation: a signed-in ACTIVE user sees all producer and livestock rows with `is_admin()` resolving, while `anon` is denied on both crop and sector tables. Re-running the advisors shows all four anon findings cleared.
+
+### 4.10 Tests
+
+`npm test` runs Vitest. Coverage focuses on logic where a silent regression is costly:
+
+- `src/features/backup.test.ts` — every backed-up table has a primary key, the key map has no extras, all eight sector tables are included, and parent tables precede their children so a restore satisfies foreign keys. This is the invariant whose violation caused the original backup gap.
+- `src/features/farmers.test.ts` — the duplicate-producer rule: matches across casing/whitespace, matches on name plus either birthdate or barangay, and does not flag namesakes or unrelated people who merely share a barangay and birthdate.
+
+### 4.11 Verification
+
+`npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` all pass. The sample-data script has been executed against the linked project: 468 livestock records, 9 fisherfolk, 162 catch records, 6 aquaculture sites, 12 culture cycles, and the livestock/fisheries summary rows. Edge Functions must be deployed (`supabase functions deploy generate-report` and `supabase functions deploy compute-statistics`) for report generation and statistics computation to run in a live environment.

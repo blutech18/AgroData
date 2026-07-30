@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 // Order matters for restore (parents before children). Covers every sector:
 // crops, livestock/poultry, fisheries, and aquaculture, plus the stored
 // statistical summaries and the audit trail.
-const TABLES = [
+export const TABLES = [
   "user_roles",
   "users",
   "farmers",
@@ -24,9 +24,9 @@ const TABLES = [
   "audit_logs",
 ] as const;
 
-type TableName = (typeof TABLES)[number];
+export type TableName = (typeof TABLES)[number];
 
-const PK: Record<TableName, string> = {
+export const PK: Record<TableName, string> = {
   user_roles: "role_id",
   users: "user_id",
   farmers: "farmer_id",

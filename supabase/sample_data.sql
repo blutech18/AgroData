@@ -10,7 +10,10 @@
 -- Run AFTER setup_all.sql (which already seeds roles + crops).
 -- Paste into Supabase Studio -> SQL Editor -> Run.
 --
--- Idempotent: if farmer records already exist, the script does nothing.
+-- Idempotent, in two independently guarded blocks: the crop block skips when
+-- producers already exist, and the sector block skips when sector records
+-- already exist. A database that already has crop sample data can therefore
+-- still receive livestock, fisheries, and aquaculture demo data.
 -- Barangay names use actual Kinoguitan, Misamis Oriental barangays.
 -- ============================================================================
 
@@ -119,6 +122,30 @@ begin
   join public.farms fm on fm.farm_id = p.farm_id
   group by pr.crop_id, extract(year from pr.planting_date);
 
+  raise notice 'AGRODATA crop sample data inserted successfully.';
+end $$;
+
+-- ============================================================================
+-- SECTOR SAMPLE DATA - livestock/poultry, fisheries, aquaculture
+-- ----------------------------------------------------------------------------
+-- Guarded independently from the crop block above so a database that already
+-- holds crop sample data can still receive sector demo data. Requires at least
+-- one producer, and skips if any sector records already exist.
+-- ============================================================================
+do $$
+begin
+  if (select count(*) from public.farmers) = 0 then
+    raise notice 'AGRODATA sector sample data skipped - no producers registered yet.';
+    return;
+  end if;
+
+  if (select count(*) from public.livestock_records) > 0
+     or (select count(*) from public.fisherfolk) > 0
+     or (select count(*) from public.aquaculture_sites) > 0 then
+    raise notice 'AGRODATA sector sample data already present - skipping.';
+    return;
+  end if;
+
   -- ==========================================================================
   -- LIVESTOCK & POULTRY
   -- Periodic inventory/production records per producer + species + barangay.
@@ -164,15 +191,21 @@ begin
   -- ==========================================================================
   -- FISHERIES (capture) - fisherfolk profiles + monthly catch records
   -- ==========================================================================
+  -- Roughly two-thirds of producers also fish. Selection is by row position
+  -- rather than barangay name, so the seed behaves the same on a database whose
+  -- producers were entered by hand.
   insert into public.fisherfolk (farmer_id, barangay, involvement, vessel_type, gear_type)
   select f.farmer_id,
          f.barangay,
-         case when f.farmer_id % 2 = 0 then 'PART_TIME'::fishing_involvement
+         case when f.rn % 2 = 0 then 'PART_TIME'::fishing_involvement
               else 'FULL_TIME'::fishing_involvement end,
-         case when f.farmer_id % 3 = 0 then 'Non-motorized banca' else 'Motorized banca' end,
-         case when f.farmer_id % 2 = 0 then 'Hook and line' else 'Gill net' end
-  from public.farmers f
-  where f.barangay in ('Bolisong', 'Buko', 'Poblacion', 'Esperanza');
+         case when f.rn % 3 = 0 then 'Non-motorized banca' else 'Motorized banca' end,
+         case when f.rn % 2 = 0 then 'Hook and line' else 'Gill net' end
+  from (
+    select farmer_id, barangay, row_number() over (order by farmer_id) as rn
+    from public.farmers
+  ) f
+  where f.rn % 3 <> 0;
 
   insert into public.fish_catch (
     fisherfolk_id, catch_date, subsector, species_name, quantity, unit, notes
@@ -198,19 +231,24 @@ begin
   -- ==========================================================================
   -- AQUACULTURE - sites and stocking-to-harvest cycles
   -- ==========================================================================
+  -- Four producers operate an aquaculture site, chosen by row position so the
+  -- seed does not depend on specific barangay names existing.
   insert into public.aquaculture_sites (
     farmer_id, site_name, barangay, site_type, water_environment, area_size
   )
   select f.farmer_id,
          f.last_name || ' Fishpond',
          f.barangay,
-         case when f.farmer_id % 2 = 0 then 'POND'::aqua_site_type
+         case when f.rn % 2 = 0 then 'POND'::aqua_site_type
               else 'CAGE'::aqua_site_type end,
-         case when f.farmer_id % 2 = 0 then 'FRESHWATER'::water_environment
+         case when f.rn % 2 = 0 then 'FRESHWATER'::water_environment
               else 'BRACKISH'::water_environment end,
          round((random() * 0.8 + 0.2)::numeric, 2)
-  from public.farmers f
-  where f.barangay in ('Panabol', 'Sumalag');
+  from (
+    select farmer_id, last_name, barangay, row_number() over (order by farmer_id) as rn
+    from public.farmers
+  ) f
+  where f.rn <= 4;
 
   -- Completed cycle (harvested) per site.
   insert into public.aquaculture_cycles (
@@ -290,5 +328,5 @@ begin
     ('GENERATE_REPORT','reports',  null,  'Crop Production Report',       90)
   ) as x(action, entity, entity_id, details, mins);
 
-  raise notice 'AGRODATA sample data inserted successfully.';
+  raise notice 'AGRODATA sector sample data inserted successfully.';
 end $$;

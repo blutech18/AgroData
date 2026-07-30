@@ -71,7 +71,37 @@ export async function deleteFarmer(id: number): Promise<void> {
 // saving so staff can review a possible duplicate instead of hitting an error.
 // ---------------------------------------------------------------------------
 
-const normalize = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
+/** Collapses casing and whitespace so "  Dela  Cruz " matches "dela cruz". */
+export const normalizeName = (value: string) =>
+  value.trim().replace(/\s+/g, " ").toLowerCase();
+
+export interface DuplicateCandidateInput {
+  first_name: string;
+  last_name: string;
+  birthdate: string;
+  barangay: string;
+}
+
+/**
+ * The duplicate rule: same normalized first and last name, plus either the same
+ * birthdate or the same barangay. Names alone are too weak (namesakes are
+ * common), and requiring all four fields would only repeat what the database
+ * unique constraint already rejects.
+ */
+export function isPossibleDuplicate(
+  candidate: Pick<Farmer, "first_name" | "last_name" | "birthdate" | "barangay">,
+  input: DuplicateCandidateInput
+): boolean {
+  const sameName =
+    normalizeName(candidate.first_name) === normalizeName(input.first_name) &&
+    normalizeName(candidate.last_name) === normalizeName(input.last_name);
+  if (!sameName) return false;
+
+  return (
+    candidate.birthdate === input.birthdate ||
+    normalizeName(candidate.barangay) === normalizeName(input.barangay)
+  );
+}
 
 /**
  * Returns existing producers that look like the one being registered: the same
@@ -81,8 +111,8 @@ export async function findPossibleDuplicates(
   input: Pick<FarmerInput, "first_name" | "last_name" | "birthdate" | "barangay">,
   excludeId?: number
 ): Promise<Farmer[]> {
-  const first = normalize(input.first_name);
-  const last = normalize(input.last_name);
+  const first = normalizeName(input.first_name);
+  const last = normalizeName(input.last_name);
   if (!first || !last) return [];
 
   let query = supabase
@@ -97,10 +127,7 @@ export async function findPossibleDuplicates(
   const { data, error } = await query;
   if (error) throw error;
 
-  const barangay = normalize(input.barangay);
-  return ((data as Farmer[]) ?? []).filter(
-    (f) => f.birthdate === input.birthdate || normalize(f.barangay) === barangay
-  );
+  return ((data as Farmer[]) ?? []).filter((f) => isPossibleDuplicate(f, input));
 }
 
 // ---------------------------------------------------------------------------
