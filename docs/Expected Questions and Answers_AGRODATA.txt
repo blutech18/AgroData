@@ -1,21 +1,22 @@
 AGRODATA — EXPECTED PANEL QUESTIONS AND ANSWERS
 ================================================
 
+Covers the revised scope: crops, livestock and poultry, municipal fisheries,
+and aquaculture. Answers describe what is actually implemented in the system.
+
 
 QUESTION 1: What is the "analytics module"?
 
 ANSWER:
 The analytics module is a dashboard feature inside the AGRODATA system that reads the
 recorded agricultural data from the database and displays it as charts, graphs, and summary
-numbers. It does not require the user to manually compute anything. When the Municipal
-Agriculturalist opens the dashboard, the system automatically runs SQL aggregation queries
-against the PostgreSQL database through Supabase to compute totals, averages, and counts
-from the planting_records, harvest_inventory, and yield_statistics tables. The results are then
-displayed on screen as visual charts — for example, a bar chart of total harvest per crop type,
-a comparison of production per barangay, or a summary of how many farmers are registered.
-In simple terms, it turns the stored data into a visual summary that helps the Municipal
-Agriculturalist understand agricultural performance at a glance without reading through
-individual records.
+numbers. It does not require the user to manually compute anything. The system runs SQL
+aggregation queries against the PostgreSQL database through Supabase to compute totals,
+averages, and counts, then displays the results on screen as visual charts — for example,
+total harvest per crop type, livestock and poultry inventory per species, or municipal fish
+catch per subsector. In simple terms, it turns the stored data into a visual summary that
+helps the Municipal Agriculturalist understand agricultural performance at a glance without
+reading through individual records.
 
 
 ─────────────────────────────────────────────────────────────────────────────
@@ -24,32 +25,52 @@ individual records.
 QUESTION 2: What specific data does the analytics module show?
 
 ANSWER:
-The analytics module shows the following:
-- Total number of registered farmers and farms per barangay
+For crops:
+- Total number of registered producers and farms per barangay
 - Total area planted per crop type
 - Total and average harvest yield per crop type
-- Crop production distribution across barangays (e.g., which barangay produces the most rice)
-- Historical production comparison across planting seasons
+- Crop production distribution across barangays
+- Historical production comparison across years
 - Number of planting activities by status (Planted, Harvested, Spoiled)
-All of these are computed directly from the existing tables in the database — specifically
-from planting_records, harvest_inventory, farmers, farms, and yield_statistics.
+
+For livestock and poultry:
+- Recorded inventory per species, with births, deaths, and dispositions
+- Inventory distribution by species shown as a chart
+
+For fisheries and aquaculture:
+- Total municipal fish catch, broken down by marine and inland subsector
+- Total aquaculture harvest as a dashboard indicator
+
+All values are computed from the tables that hold the encoded records —
+planting_records, harvest_inventory, farmers, farms, livestock_records, fish_catch,
+and aquaculture_cycles — plus the stored summary tables yield_statistics,
+livestock_statistics, and fisheries_statistics.
 
 
 ─────────────────────────────────────────────────────────────────────────────
 
 
-QUESTION 3: What reports does the system generate for the Provincial Agriculture Office?
+QUESTION 3: What reports does the system generate?
 
 ANSWER:
-The system generates three compliance reports for the Provincial Agriculture Office:
-1. Quarterly Crop Production Report — total area planted and total yield per crop type
-   for a selected quarter.
-2. Seasonal Farm Inventory Report — list of active farms, plots, and their planting
-   activities for a selected season.
-3. Annual Municipal Agriculture Summary — yearly overview of total production, number
-   of farmers, and land utilization across all barangays.
-All three reports are formatted according to the standard reporting requirements of the
-Provincial Agriculture Office and can be downloaded as PDF or Excel.
+The system generates six reports:
+1. Quarterly Crop Production Report — area planted and total yield per crop and
+   barangay for a selected year and quarter.
+2. Seasonal Farm Inventory Report — registered farms, land details, plots, and
+   planting activities for a selected year and wet or dry season.
+3. Annual Municipal Agriculture Summary — yearly production consolidated across
+   barangays and crop categories.
+4. Farmer Registry — the list of registered agricultural producers.
+5. Livestock and Poultry Inventory Report — recorded inventory, births, deaths,
+   dispositions, and production per species.
+6. Municipal Fisheries Catch Report — total catch per species and per municipal
+   subsector, marine and inland.
+
+Each report can be previewed on screen and exported to PDF, Excel, or CSV, or printed.
+The report layouts follow the structure agreed for municipal and provincial use. The
+final fields, units, and signatories for anything submitted externally still have to be
+confirmed against the Office's actual forms and the receiving office, so the study does
+not claim formal certification of the format.
 
 
 ─────────────────────────────────────────────────────────────────────────────
@@ -58,13 +79,14 @@ Provincial Agriculture Office and can be downloaded as PDF or Excel.
 QUESTION 4: How is the report generation automated? What makes it "automation"?
 
 ANSWER:
-When the Municipal Agriculturalist clicks "Generate Report," the system automatically
-queries the database using pre-written SQL queries through Supabase, compiles the data,
-formats it into the required report structure, and produces the output file — all without
-the user manually gathering or computing anything. This replaces the previous process
-where OMA staff had to go through logbooks, manually tally figures, and type the report
-by hand. The automation eliminates manual data compilation, reduces human error, and
-ensures the report always reflects the latest data in the database.
+When the Municipal Agriculturalist clicks "Generate Report," the system calls a Supabase
+Edge Function — a server-side function — which queries the database, aggregates the
+records, and returns the finished report content. The user does not gather or compute
+anything. This replaces the previous process where staff had to go through logbooks,
+manually tally figures, and type the report by hand. The same approach is used for the
+statistical summaries: one action recomputes the crop, livestock, and fisheries summaries
+for a chosen period and stores them. The automation removes manual compilation, reduces
+human error, and ensures the output always reflects the current data.
 
 
 ─────────────────────────────────────────────────────────────────────────────
@@ -74,12 +96,11 @@ QUESTION 5: Why was forecasting removed from the system?
 
 ANSWER:
 Forecasting was removed based on the adviser's instruction after the defense. The system
-is intentionally limited to descriptive statistical analysis — meaning it only summarizes
-and visualizes data that is already recorded. Forecasting would require historical data
-spanning multiple seasons, statistical modeling, and validation that is beyond the current
-scope of the study. Limiting the analytics to descriptive statistics keeps the system
-aligned with the actual data available at the OMA of LGU Kinoguitan and ensures the
-outputs are accurate and reliable.
+is intentionally limited to descriptive statistical analysis — it summarizes and visualizes
+data that is already recorded. Forecasting would require historical data spanning multiple
+seasons, statistical modeling, and validation that is beyond the current scope of the study.
+Limiting the analytics to descriptive statistics keeps the system aligned with the data
+actually available at the OMA of LGU Kinoguitan and keeps the outputs defensible.
 
 
 ─────────────────────────────────────────────────────────────────────────────
@@ -88,14 +109,16 @@ outputs are accurate and reliable.
 QUESTION 6: What technology is used to build AGRODATA?
 
 ANSWER:
-The system uses the following technology stack:
-- Frontend: React with Vite (web browser-based user interface)
-- Backend/Database: Supabase, which is built on top of PostgreSQL
+- Frontend: React 18 with TypeScript, built using Vite, styled with Tailwind CSS
+- Backend and database: Supabase, which is built on PostgreSQL
+- Server-side logic: Supabase Edge Functions for report generation and statistics
 - Authentication: Supabase Auth with role-based access control
-- Database queries: SQL aggregation queries executed through Supabase
-- Deployment: LAN-based (accessible within the municipal office network)
-Row-Level Security (RLS) is enabled on all tables to ensure only authorized OMA personnel
-can access or modify the data.
+- Charts: Recharts; report export uses PDF, Excel, and CSV output
+- Deployment: the web application is hosted as a static site and connects to Supabase
+  Cloud over the internet, so authorized staff can use it from any browser
+
+Row Level Security is enabled on every table so only authorized OMA personnel with an
+active account can read or modify data.
 
 
 ─────────────────────────────────────────────────────────────────────────────
@@ -104,14 +127,17 @@ can access or modify the data.
 QUESTION 7: How does the system prevent duplicate records?
 
 ANSWER:
-The system prevents duplicate records through database-level constraints defined in the
-PostgreSQL schema. For farmers, a unique constraint is applied on the combination of
-first_name, last_name, birthdate, and barangay — so the same person cannot be registered
-twice. For crops, the crop_name field has a unique constraint. For user accounts, both
-email and username fields are unique. These constraints are enforced at the database level,
-meaning even if someone bypasses the form, the database will reject the duplicate entry.
-The system also performs real-time validation on the form before submission to alert the
-user before the data reaches the database.
+There are two layers. First, the database itself enforces uniqueness: producers are unique
+on the combination of first name, last name, birthdate, and barangay; crop names are unique;
+animal species names are unique; user email and username are unique; and one producer can
+have only one fisherfolk profile. These constraints hold even if someone bypasses the form.
+
+Second, before saving a new producer the system searches for a possible duplicate — the same
+name, ignoring letter case and extra spaces, together with either the same birthdate or the
+same barangay. If a match is found, the system shows a warning listing the existing record so
+the staff member can review it, and requires a deliberate confirmation to save anyway. This
+matters because a person may genuinely be a namesake, so the system flags for review instead
+of silently blocking or silently creating a second profile.
 
 
 ─────────────────────────────────────────────────────────────────────────────
@@ -120,12 +146,19 @@ user before the data reaches the database.
 QUESTION 8: How does the system ensure data security?
 
 ANSWER:
-The system uses Supabase's Row-Level Security (RLS), which means every database table
-has access policies that check whether the logged-in user has an active account and the
-correct role before allowing any read or write operation. There are two roles: OMA Staff,
-who can manage farmer and crop data, and Municipal Agriculturalist, who has full
-administrative access including user management, backup, and audit logs. All authentication
-is handled through Supabase Auth. Passwords are never stored in plain text.
+Every table has Row Level Security policies that require the signed-in user to have an
+ACTIVE profile in the system's users table before any read or write is allowed. Simply
+holding an account is not enough; the profile is created by the Municipal Agriculturalist
+through the Add User screen. This applies equally to the crop, livestock, fisheries, and
+aquaculture tables.
+
+There are two roles. OMA Staff encode and maintain records. The Municipal Agriculturalist
+additionally handles reporting, user accounts, backup and restore, and audit logs. For the
+oversight actions, the restriction is enforced on the server, not only by hiding buttons:
+report generation and statistics recomputation check the caller's role inside the Edge
+Function and refuse the request otherwise. Authentication is handled by Supabase Auth and
+passwords are stored only as hashes, never as plain text. Every create, update, and delete
+is written to an audit log with the responsible user and a timestamp.
 
 
 ─────────────────────────────────────────────────────────────────────────────
@@ -134,41 +167,42 @@ is handled through Supabase Auth. Passwords are never stored in plain text.
 QUESTION 9: Who can access the analytics dashboard?
 
 ANSWER:
-Both the Municipal Agriculturalist and OMA Staff can access the analytics dashboard,
-since both roles have active profiles with read access to the relevant tables. However,
-only the Municipal Agriculturalist can generate the official compliance reports for the
-Provincial Agriculture Office, as report generation is restricted to the administrator role.
+Both roles can view the dashboard and the analytics, since both need to see the state of
+the data they work with. Only the Municipal Agriculturalist can generate the official
+reports and recompute the stored statistical summaries. That restriction is enforced by
+the server-side function, so it cannot be bypassed by calling the endpoint directly.
 
 
 ─────────────────────────────────────────────────────────────────────────────
 
 
-QUESTION 10: How does this system benefit the farmers directly?
+QUESTION 10: How does this system benefit the producers directly?
 
 ANSWER:
-Farmers do not directly access the system. However, they benefit indirectly because
-the system helps OMA staff manage their records more accurately and efficiently.
-With organized and up-to-date data, the Municipal Agriculturalist can quickly identify
-which farmers need support, which areas have low production, and how to better target
-government programs and subsidies. The analytics dashboard makes this information
-visible and actionable for the office, which translates to better and faster service
-delivery to farmers.
+Farmers, livestock and poultry raisers, fisherfolk, and aquaculture operators do not access
+the system directly. They benefit indirectly because the office manages their records more
+accurately and can retrieve them quickly. With organised and current data, the Municipal
+Agriculturalist can identify which producers need support, which barangays have low
+production, and how to target programs and assistance. Because one producer profile covers
+every sector the person participates in, the office can also see a household's full
+agricultural activity instead of separate unrelated lists.
 
 
 ─────────────────────────────────────────────────────────────────────────────
 
 
-QUESTION 11: What is the yield_statistics table used for?
+QUESTION 11: What are the statistics tables used for?
 
 ANSWER:
-The yield_statistics table stores pre-computed summary data for analytics. Instead of
-running heavy aggregation queries from scratch every time the dashboard is opened,
-the system can store computed totals, averages, and counts in this table for quick
-retrieval. Each record in the table represents a statistical summary for one crop type,
-in one barangay, for a specific time period (monthly, quarterly, or yearly). It is linked
-to the crops table through the crop_id foreign key with a one-to-many relationship,
-meaning one crop can have many statistical summary records across different periods
-and barangays.
+They store pre-computed summary data for analytics, so the dashboard does not have to
+recompute heavy aggregations from scratch each time it is opened. There are three:
+- yield_statistics, per crop and barangay
+- livestock_statistics, per animal species and barangay
+- fisheries_statistics, per species and municipal subsector
+
+Each row represents one summary for one reporting period, monthly, quarterly, or yearly.
+The raw encoded records remain the source of truth; these tables are derived from them and
+are replaced when the summaries are recomputed.
 
 
 ─────────────────────────────────────────────────────────────────────────────
@@ -177,12 +211,112 @@ and barangays.
 QUESTION 12: What is the difference between the current system and the proposed system?
 
 ANSWER:
-The current system is entirely paper-based. OMA staff record all data by hand in
-logbooks, store them in filing cabinets, and manually compile everything when a report
-is needed. This is slow, error-prone, and makes it nearly impossible to retrieve or
-cross-reference data quickly. The proposed AGRODATA system replaces all of this with
-a centralized digital database where data is entered through web forms, validated
-automatically, stored securely, and made retrievable in seconds. On top of that,
-the system automatically generates compliance reports and displays the data as visual
-analytics — capabilities the current manual system cannot provide at all.
+The current process is manual. Records for crops, animals, fisherfolk, catch, and
+aquaculture are kept in separate forms, notebooks, and files, and everything is compiled by
+hand when a summary is needed. It is slow, prone to error and duplication, and there is no
+single place to look up a producer's full activity. The proposed AGRODATA system replaces
+this with one centralised database where data is entered through validated web forms, stored
+securely with role-based access, and retrievable in seconds. On top of that it generates the
+reports automatically and presents the data as visual analytics, which the manual process
+cannot do at all.
 
+
+─────────────────────────────────────────────────────────────────────────────
+
+
+QUESTION 13: Why were livestock, poultry, and fisheries added to the system?
+
+ANSWER:
+The Office of the Municipal Agriculturalist is responsible for agriculture in the
+municipality as a whole, not crop production alone, and the stakeholder asked for these
+sectors to be included. Philippine agricultural statistics are themselves organised into
+crops, livestock and poultry, and fisheries, so covering the three domains matches how the
+data is reported nationally. A crop-only design could not represent animal inventories,
+fish catch, or managed aquaculture cycles, because those are different kinds of records
+with different quantities, events, and reporting periods.
+
+
+─────────────────────────────────────────────────────────────────────────────
+
+
+QUESTION 14: How can one person be a farmer, a raiser, and a fisherfolk without duplicate records?
+
+ANSWER:
+The system keeps one producer profile per person and attaches the sector activities to it.
+The existing farmers table serves as that shared producer registry, so a person who plants
+crops, raises animals, and also fishes has a single identity record, with their farms,
+livestock records, fisherfolk profile, and aquaculture sites all linked to it. The producer
+list shows a Sectors column indicating which sectors each person actually has records in.
+This avoids the duplicate, disconnected lists that would result from maintaining a separate
+registry per sector.
+
+
+─────────────────────────────────────────────────────────────────────────────
+
+
+QUESTION 15: What exactly is recorded for livestock and poultry?
+
+ANSWER:
+Each record is tied to a producer, an animal species, a barangay, and a reference date. It
+holds the inventory count on that date, the births or hatches, deaths, and animals disposed
+of during the period, and optionally the production output with its type and unit — for
+example eggs in trays, milk in liters, or meat in kilograms. Species are kept in a reference
+list classified as livestock or poultry, such as carabao, cattle, goat, and swine, or chicken
+and duck. Counts and quantities cannot be negative.
+
+The module is for inventory and production monitoring only. It does not do veterinary
+diagnosis, treatment records, disease surveillance, or individual animal tagging.
+
+
+─────────────────────────────────────────────────────────────────────────────
+
+
+QUESTION 16: What exactly is recorded for fisheries and aquaculture?
+
+ANSWER:
+For capture fisheries, a producer is given a fisherfolk profile with their barangay, whether
+they fish full time or part time, and optional vessel and gear references. Their catch is then
+encoded per record with the date, the municipal subsector (marine or inland), the species,
+the quantity, and the unit.
+
+For aquaculture, a production site is registered with its name, barangay, type (pond, cage,
+tank, or pen), water environment (freshwater, brackish, or marine), and area. Each culture
+cycle at that site records the species, the stocking date and quantity, and the harvest date
+and quantity once completed, with a status of stocked, harvested, or lost. The system will not
+accept a harvest date earlier than the stocking date.
+
+Fisheries licensing, enforcement, and vessel tracking are outside the scope.
+
+
+─────────────────────────────────────────────────────────────────────────────
+
+
+QUESTION 17: If the database is lost, how do you recover it?
+
+ANSWER:
+The Municipal Agriculturalist can export a full backup from the Backup and Restore screen,
+which downloads every table as a single file — producers, crops, farms, plots, plantings,
+harvests, livestock, fisherfolk, catch, aquaculture, the statistical summaries, and the audit
+log. Restoring re-imports the records with their original identifiers so the relationships
+between them are preserved, and the system then realigns the database counters so new
+entries do not collide with restored ones. The screen warns before restoring, because a
+restore overwrites records that share an identifier with the backup, and it also warns if the
+selected file is an older backup created before the livestock and fisheries modules existed.
+Login accounts themselves are managed by the authentication service and are not altered by a
+restore.
+
+
+─────────────────────────────────────────────────────────────────────────────
+
+
+QUESTION 18: How do you know the system actually works?
+
+ANSWER:
+Three ways. The project compiles and builds with type checking and linting clean, so the
+code is internally consistent. There is an automated test suite covering the logic where a
+silent mistake would be costly — the duplicate-producer rule, and the completeness and
+ordering of the backup coverage so that no table can be quietly left out of a backup. And
+the database itself was checked with Supabase's own security advisors, which is how two
+access issues were found and fixed: the sector tables were originally created with a weaker
+access rule than the crop tables, and internal helper functions were callable without
+signing in. Both were corrected and re-verified.

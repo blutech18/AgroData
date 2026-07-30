@@ -12,7 +12,13 @@ Comments
 1. The system is too simple, mostly recording data. Add analytics, statistics, and other data-driven benefits.
 
 Compliance:
-Added an analytics module that computes statistical summaries and displays them as dashboards and charts. Forecasting was removed per adviser instruction.
+Added an analytics module that computes descriptive statistical summaries server-side and
+displays them as dashboards and charts: crop area and yield with historical trends, livestock
+and poultry inventory by species, municipal fish catch by subsector, aquaculture harvest
+totals, and barangay-level comparisons. The computed summaries are stored in the
+yield_statistics, livestock_statistics, and fisheries_statistics tables and can be recomputed
+per reporting period. Forecasting was removed per adviser instruction, so the analytics remain
+descriptive.
 
 ─────────────────────────────────────────────────────────────────────────────
 
@@ -22,7 +28,21 @@ Comments
 2. Refer to the attached video for other comments.
 
 Compliance:
-Defined the compliance reports for the Provincial Agriculture Office and addressed the video comments.
+Named and implemented the reports instead of leaving them generic. The system now generates
+the Quarterly Crop Production Report (year and quarter), the Seasonal Farm Inventory Report
+(year and wet or dry season), the Annual Municipal Agriculture Summary (year), the Farmer
+Registry, the Livestock and Poultry Inventory Report, and the Municipal Fisheries Catch
+Report. Each is compiled server-side from the database and can be previewed, printed, or
+exported to PDF, Excel, or CSV, with signatory blocks.
+
+On compliance with the Provincial Agriculture Office: the report structures follow the
+formats agreed for municipal and provincial use, but the manuscript deliberately stops short
+of claiming certified conformance. The final field names, units, frequency, and signatories
+must be validated against the Office's actual submission forms with the receiving office
+before the study asserts formal compliance. This is stated in the scope and in the report
+use case so the claim in the paper matches what has actually been verified.
+
+The video comments were addressed together with the analytics and automation items above.
 
 ─────────────────────────────────────────────────────────────────────────────
 
@@ -31,9 +51,61 @@ Comments
 1. Make the system beneficial enough to be called automation.
 
 Compliance:
-Added automated report generation and statistical computation so the system qualifies as automation.
+Report generation and statistical computation now run as Supabase Edge Functions, which are
+server-side functions that query and aggregate the database and return finished output. The
+user selects a report and period and receives a compiled result with no manual tallying,
+and one action recomputes the crop, livestock, and fisheries summaries for a period. Also
+automated: validation and duplicate detection on data entry, audit logging of record changes,
+and full database backup and restore.
+
+─────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────
+
+POST-DEFENSE SCOPE REVISION: LIVESTOCK, POULTRY, AND FISHERIES
+
+Source of change:
+Not a panel comment. After the defense the stakeholder asked that the system cover livestock
+and poultry raising, municipal fisheries, and aquaculture in addition to crops, since the
+Office of the Municipal Agriculturalist is responsible for municipal agriculture as a whole.
+
+Compliance:
+The manuscript and the system were both revised for the three domains.
+
+Manuscript — Chapter I introduction, framework and IPO, statement of the problem, objectives,
+scope and delimitations, significance, output, and definition of terms now cover the added
+sectors. Chapter II gained sections on integrated crop, livestock, and fisheries information
+systems, livestock and poultry records management, and fisheries and aquaculture records
+management, with references to Philippine Statistics Authority, BFAR, and FAO sources.
+Chapter III updated the research setting, data gathering, current and proposed system flow,
+architecture, data dictionary, and use cases. The software requirements were corrected from
+MySQL and a standalone Node.js runtime to PostgreSQL with Supabase, which is what the system
+actually uses.
+
+System — added the animal species reference list, livestock and poultry records, fisherfolk
+profiles, fish catch records, aquaculture sites, and culture cycles, together with the
+livestock and fisheries statistical summaries. The existing farmers table serves as the
+unified producer registry so one person may hold crop, livestock, fisheries, and aquaculture
+records without duplicate identities.
+
+Scope limits kept explicit: no forecasting or predictive analytics, no veterinary diagnosis
+or disease surveillance, no fisheries licensing, enforcement, or vessel tracking, and no
+direct producer access to the system.
 
 ─────────────────────────────────────────────────────────────────────────────
 
 FIGURES REQUIRING UPDATE:
 Figures 1, 5, 6, 7, and 8 were updated to reflect the analytics features (without forecasting).
+
+STILL TO BE REDRAWN for the livestock and fisheries revision — the captions and the
+surrounding discussion in the manuscript already describe the added sectors, but the diagram
+images themselves have not been redrawn:
+- Figure 1, Conceptual Paradigm — add the sector inputs, processes, and outputs.
+- Figure 5, Proposed System Flow — add the producer, animal, catch, and aquaculture paths.
+- Figure 6, System Architecture — add the livestock, fisheries, and aquaculture modules.
+- Figure 7, Entity Relationship Diagram — add the six sector tables and the two statistics
+  tables, all linked to the producer registry.
+- Figure 8, Use Case Diagram — add Manage Livestock and Poultry Records, Register Fisherfolk
+  and Encode Fish Catch, Manage Aquaculture Sites and Cycles, and the two sector reports.
+- Figures 9 to 12, sequence and activity diagrams — show sector data encoding and the
+  sector report generation.
