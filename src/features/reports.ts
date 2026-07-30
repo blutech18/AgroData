@@ -1,8 +1,22 @@
 import { supabase } from "@/lib/supabase";
 
+/**
+ * Compliance report types required by the Provincial Agriculture Office
+ * (see manuscript, Use Case: Generate Agricultural Produced Report):
+ *   - quarterly_crop_production : crop types, area planted, and total yield
+ *                                 per barangay for a given quarter.
+ *   - seasonal_farm_inventory   : registered farms, land classifications, and
+ *                                 planting activities per season.
+ *   - annual_municipal_summary  : yearly production consolidated across all
+ *                                 barangays and crop categories.
+ * farmer_registry supports Objective 1 (report generation for farmer records).
+ */
 export type ReportType =
-  | "crop_production"
-  | "barangay_summary"
+  | "quarterly_crop_production"
+  | "seasonal_farm_inventory"
+  | "annual_municipal_summary"
+  | "livestock_inventory"
+  | "fisheries_catch"
   | "farmer_registry";
 
 export interface ReportColumn {
@@ -19,147 +33,22 @@ export interface ReportResult {
   generatedAt: string;
 }
 
-interface HarvestRow {
-  quantity_harvested: number;
-  harvested_at: string;
-  planting_records: {
-    area_planted: number;
-    crops: { crop_name: string } | null;
-    farm_plots: { farms: { barangay: string } | null } | null;
-  } | null;
-}
-
-function withinRange(dateStr: string, from?: string, to?: string) {
-  const d = dateStr.slice(0, 10);
-  if (from && d < from) return false;
-  if (to && d > to) return false;
-  return true;
-}
-
 /**
- * Generates a Provincial Agriculture Office compliance-style report from
- * harvest and planting data. Aggregations are computed automatically.
+ * Generates a Provincial Agriculture Office compliance report by invoking the
+ * `generate-report` Supabase Edge Function. The Edge Function executes the SQL
+ * queries and aggregations server-side and returns the compiled, formatted
+ * result. Export helpers below then package it into PDF / Excel / CSV.
  */
 export async function generateReport(
   type: ReportType,
   from?: string,
   to?: string
 ): Promise<ReportResult> {
-  const generatedAt = new Date().toISOString();
-  const period =
-    from || to ? `Period: ${from || "start"} to ${to || "present"}` : "Period: All records";
-
-  if (type === "farmer_registry") {
-    const { data, error } = await supabase
-      .from("farmers")
-      .select("first_name, last_name, sex, barangay, contact_no, registration_date")
-      .order("barangay");
-    if (error) throw error;
-    return {
-      title: "Registered Farmers Registry",
-      subtitle: "OMA Kinoguitan · Farmer profiling report",
-      columns: [
-        { key: "name", label: "Farmer Name" },
-        { key: "sex", label: "Sex" },
-        { key: "barangay", label: "Barangay" },
-        { key: "contact_no", label: "Contact No." },
-        { key: "registered", label: "Registered" },
-      ],
-      rows: (data ?? []).map((f: any) => ({
-        name: `${f.last_name}, ${f.first_name}`,
-        sex: f.sex,
-        barangay: f.barangay,
-        contact_no: f.contact_no,
-        registered: String(f.registration_date).slice(0, 10),
-      })),
-      generatedAt,
-    };
-  }
-
-  // Pull harvest joined with planting/crop/barangay for production reports.
-  const { data, error } = await supabase
-    .from("harvest_inventory")
-    .select(
-      "quantity_harvested, harvested_at, planting_records(area_planted, crops(crop_name), farm_plots(farms(barangay)))"
-    );
+  const { data, error } = await supabase.functions.invoke("generate-report", {
+    body: { type, from, to },
+  });
   if (error) throw error;
-
-  const rowsRaw = ((data ?? []) as unknown as HarvestRow[]).filter((r) =>
-    withinRange(r.harvested_at, from, to)
-  );
-
-  if (type === "barangay_summary") {
-    const map = new Map<string, { yield: number; area: number }>();
-    for (const r of rowsRaw) {
-      const b = r.planting_records?.farm_plots?.farms?.barangay ?? "Unknown";
-      const cur = map.get(b) ?? { yield: 0, area: 0 };
-      cur.yield += Number(r.quantity_harvested ?? 0);
-      cur.area += Number(r.planting_records?.area_planted ?? 0);
-      map.set(b, cur);
-    }
-    return {
-      title: "Barangay Production Summary",
-      subtitle: `OMA Kinoguitan · ${period}`,
-      columns: [
-        { key: "barangay", label: "Barangay" },
-        { key: "area", label: "Total Area (ha)", numeric: true },
-        { key: "yield", label: "Total Yield", numeric: true },
-        { key: "avg", label: "Avg Yield/ha", numeric: true },
-      ],
-      rows: [...map.entries()]
-        .map(([barangay, v]) => ({
-          barangay,
-          area: round(v.area),
-          yield: round(v.yield),
-          avg: v.area > 0 ? round(v.yield / v.area) : 0,
-        }))
-        .sort((a, b) => (b.yield as number) - (a.yield as number)),
-      generatedAt,
-    };
-  }
-
-  // crop_production
-  const map = new Map<string, { yield: number; area: number }>();
-  for (const r of rowsRaw) {
-    const c = r.planting_records?.crops?.crop_name ?? "Unknown";
-    const cur = map.get(c) ?? { yield: 0, area: 0 };
-    cur.yield += Number(r.quantity_harvested ?? 0);
-    cur.area += Number(r.planting_records?.area_planted ?? 0);
-    map.set(c, cur);
-  }
-  return {
-    title: "Crop Production Report",
-    subtitle: `OMA Kinoguitan · ${period}`,
-    columns: [
-      { key: "crop", label: "Crop" },
-      { key: "area", label: "Total Area (ha)", numeric: true },
-      { key: "yield", label: "Total Yield", numeric: true },
-      { key: "avg", label: "Avg Yield/ha", numeric: true },
-    ],
-    rows: [...map.entries()]
-      .map(([crop, v]) => ({
-        crop,
-        area: round(v.area),
-        yield: round(v.yield),
-        avg: v.area > 0 ? round(v.yield / v.area) : 0,
-      }))
-      .sort((a, b) => (b.yield as number) - (a.yield as number)),
-    generatedAt,
-  };
-}
-
-function round(n: number) {
-  return Math.round(n * 100) / 100;
-}
-
-export function downloadReportCsv(report: ReportResult) {
-  const header = report.columns.map((c) => `"${c.label}"`).join(",");
-  const lines = report.rows.map((row) =>
-    report.columns.map((c) => `"${row[c.key] ?? ""}"`).join(",")
-  );
-  const csv = [header, ...lines].join("\r\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  triggerDownload(blob, `${fileBase(report)}.csv`);
+  return data as ReportResult;
 }
 
 function fileBase(report: ReportResult) {
@@ -173,6 +62,16 @@ function triggerDownload(blob: Blob, filename: string) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export function downloadReportCsv(report: ReportResult) {
+  const header = report.columns.map((c) => `"${c.label}"`).join(",");
+  const lines = report.rows.map((row) =>
+    report.columns.map((c) => `"${row[c.key] ?? ""}"`).join(",")
+  );
+  const csv = [header, ...lines].join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  triggerDownload(blob, `${fileBase(report)}.csv`);
 }
 
 function escapeHtml(value: unknown): string {

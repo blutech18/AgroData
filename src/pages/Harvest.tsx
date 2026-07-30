@@ -161,8 +161,12 @@ export default function HarvestPage() {
                       size="icon"
                       className="text-destructive hover:text-destructive"
                       onClick={() => setToDelete(h)}
+                      title={`Delete ${h.planting_records?.crops?.crop_name ?? ""} harvest record`}
                     >
                       <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">
+                        Delete {h.planting_records?.crops?.crop_name ?? ""} harvest record
+                      </span>
                     </Button>
                   </TableCell>
                 </TableRow>

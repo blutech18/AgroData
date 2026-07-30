@@ -12,6 +12,22 @@ export function AppLayout() {
     () => localStorage.getItem(STORAGE_KEY) === "true"
   );
 
+  // The mobile drawer is a modal surface: Escape closes it and the page behind
+  // it must not scroll while it is open.
+  React.useEffect(() => {
+    if (!mobileOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileOpen]);
+
   const toggleCollapsed = React.useCallback(() => {
     setCollapsed((prev) => {
       const next = !prev;
@@ -42,20 +58,25 @@ export function AppLayout() {
 
       {/* Mobile sidebar */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div
+          className="fixed inset-0 z-50 lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Main navigation"
+        >
           <div
             className="absolute inset-0 bg-black/50 animate-in fade-in"
             onClick={() => setMobileOpen(false)}
             aria-hidden
           />
           <div className="absolute left-0 top-0 h-full animate-in slide-in-from-left">
-            <Sidebar onNavigate={() => setMobileOpen(false)} />
+            <Sidebar onNavigate={() => setMobileOpen(false)} autoFocus />
           </div>
         </div>
       )}
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header onMenuClick={() => setMobileOpen(true)} />
+        <Header menuExpanded={mobileOpen} onMenuClick={() => setMobileOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 lg:p-8">
           <Outlet />
         </main>

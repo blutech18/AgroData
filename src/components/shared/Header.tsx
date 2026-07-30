@@ -7,7 +7,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { logActivity } from "@/lib/audit";
 import { ModeToggle } from "@/components/mode-toggle";
 
-export function Header({ onMenuClick }: { onMenuClick: () => void }) {
+export function Header({
+  onMenuClick,
+  menuExpanded = false,
+}: {
+  onMenuClick: () => void;
+  menuExpanded?: boolean;
+}) {
   const { profile, signOut } = useAuth();
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [aboutOpen, setAboutOpen] = React.useState(false);
@@ -25,13 +31,26 @@ export function Header({ onMenuClick }: { onMenuClick: () => void }) {
   return (
     <header className="flex h-16 items-center justify-between border-b bg-gradient-to-r from-emerald-50 via-emerald-100 to-emerald-200 dark:from-emerald-950 dark:via-emerald-900 dark:to-emerald-950 px-4 lg:px-6">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuClick}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="lg:hidden"
+          onClick={onMenuClick}
+          aria-expanded={menuExpanded}
+          aria-haspopup="dialog"
+        >
           <Menu className="h-5 w-5" />
-          <span className="sr-only">Open menu</span>
+          <span className="sr-only">Open navigation menu</span>
         </Button>
 
-        <h1 className="hidden text-sm font-medium text-foreground lg:block">
-          Office of the Municipal Agriculturalist, Kinoguitan, Misamis Oriental Agricultural Data Management System
+        {/* The sidebar logo is hidden on mobile, so show a short title there
+            and the full office name from large screens up. */}
+        <h1 className="truncate text-sm font-medium text-foreground">
+          <span className="lg:hidden">AGRODATA</span>
+          <span className="hidden lg:inline">
+            Office of the Municipal Agriculturalist, Kinoguitan, Misamis Oriental Agricultural Data
+            Management System
+          </span>
         </h1>
 
         <Button

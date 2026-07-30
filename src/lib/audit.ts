@@ -21,7 +21,6 @@ export async function logActivity(params: {
       details: params.details ?? null,
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.warn("[AGRODATA] Failed to write audit log:", err);
   }
 }

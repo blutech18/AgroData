@@ -1,0 +1,1512 @@
+Liceo de Cagayan University College of Information Technology           Page      
+CHAPTER I  
+THE PROBLEM AND ITS SCOPE
+Introduction
+Agriculture is the backbone of the Philippine economy, particularly in rural municipalities such as Kinoguitan in the province of Misamis Oriental. The Local Government Unit (LGU) of Kinoguitan, through its Office of the Municipal Agriculturalist (OMA), is mandated to oversee, coordinate, and promote agricultural development within the municipality. This responsibility covers crop production, livestock and poultry raising, municipal fisheries and aquaculture, agricultural producer profiles, land utilization, and other agricultural data that are critical for evidence-based planning and the effective delivery of government services to farmers, livestock and poultry raisers, fisherfolk, and aquaculture operators.
+At present, the current practice of the OMA of Kinoguitan remains largely paper-based and manually driven. Agricultural data such as producer registrations, land use and crop records, livestock and poultry inventories, fisherfolk records, fish catch, and aquaculture production records are maintained through physical forms, logbooks, and separate files. This traditional approach introduces four significant and interconnected operational problems. First, the complete absence of a centralized digital data banking system means that agricultural information exists in fragmented records, making it highly vulnerable to data loss, damage, and deterioration over time. Second, the manual preparation of reports for submission to municipal and provincial offices is time-consuming and inaccurate, as staff must physically compile information from scattered sector records. This leads to delayed processing of results and error-prone submissions.
+Moreover, the third problem is connected with the difficulty in retrieving and managing crop, livestock and poultry, fisheries, and aquaculture records, which hampers the ability of the office to respond quickly to data requests and monitor agricultural performance across barangays. Lastly, the absence of data validation and consistency-checking mechanisms is the fourth key problem. It allows errors and duplicate entries to accumulate in the records, further undermining the integrity and reliability of the agricultural data maintained by the office. A crop-only information structure is also insufficient for representing animal inventories, fisherfolk activities, fish catch, and managed aquaculture cycles required under the expanded operational scope of the OMA.
+With the rapid advancement of information and communication technologies, government agencies at all levels are increasingly adopting digital systems to streamline their operations. The use of information systems in the public sector has been demonstrated to significantly improve data accuracy, accessibility, and organizational efficiency. Studies on local government unit-level digital transformation in the Philippines have found that the implementation of digital data management systems in municipal agriculture offices substantially reduces data inconsistencies and improves the completeness of agricultural records submitted to higher government agencies (Dela Cruz et al., 2021). Furthermore, Wolfert et al. (2023) emphasized that the shift from paper-based to digital agricultural data management has become essential for modern agricultural governance, as data banking provides the foundation for informed policy decisions at the local government level.
+For the LGU of Kinoguitan, the development of AGRODATA: An Agricultural Data Management System in Agricultural Offices presents a timely and practical solution to address the four longstanding challenges of manual data management identified in this study. This study aims to design and develop a web-based agricultural data management system for the Office of the Municipal Agriculturalist of LGU Kinoguitan, Misamis Oriental, with integrated coverage of crops, livestock and poultry, municipal fisheries, and aquaculture.
+      The proposed system will serve as a centralized digital platform for managing agricultural data handled by the OMA through four integrated functionalities: a unified agricultural producer and production-record system that supports farmer profiling, farm and crop yield monitoring, livestock and poultry inventory and production records, fisherfolk registration and fish catch encoding, and aquaculture site and culture-cycle monitoring; data validation and consistency-checking mechanisms that detect errors, prevent duplicate entries, enforce valid quantities and dates, and ensure the reliability of sector records; an automated report generation module that enables the Municipal Agriculturalist to produce accurate and timely reports, including the Quarterly Crop Production Report, Seasonal Farm Inventory Report, Annual Municipal Agriculture Summary, Livestock and Poultry Inventory Report, Municipal Fisheries Catch Report, and Farmer Registry, through authenticated server-side functions that query and compile data directly from the database; and an analytics and decision support module that provides descriptive statistical summaries, historical recorded trends, and interactive visual dashboards for crop, livestock and poultry, and fisheries data to support evidence-based agricultural planning and policy formulation. The final fields and formats of reports intended for external submission remain subject to validation by the OMA and the receiving offices.
+
+
+Framework
+      The conceptual framework of this study follows the Input-Process-Output (IPO) model, where inputs include manually managed agricultural data such as agricultural producer profiles, land use and crop records, livestock and poultry records, fisherfolk and fish catch records, aquaculture sites and culture cycles, user credentials, reporting parameters, and backup files. The process involves AGRODATA's core functions, including centralized cross-sector data storage, validated record management, automated report generation through server-side functions, descriptive data analytics and decision support, role-based access, audit logging, and backup and restoration. The outputs are accurate digital crop, livestock and poultry, fisheries, and aquaculture records; searchable producer histories; automated sector and consolidated reports; and data-driven analytical insights including statistical summaries, visual dashboards, and historical recorded trends.  
+________________
+
+
+Figure 1 
+Conceptual Paradigm of the Study
+  
+
+      The AGRODATA conceptual framework follows the Input-Process-Output (IPO) model. The input includes agricultural records, user credentials, unified producer profiles, farms and plots, planting and harvest records, animal species and periodic livestock and poultry records, fisherfolk profiles and fish catch records, aquaculture sites and stocking-to-harvest cycles, report parameters, historical production data, and backup files. The process involves authentication and role verification, cross-sector record management, search and filtering, validation of required fields, dates and non-negative quantities, automated report generation executed through Supabase Edge Functions, descriptive statistics computed through SQL aggregation, dashboard visualization, audit logging, and database backup and restoration. The output is a centralized digital agricultural database with organized multi-sector records, efficient data retrieval, crop, livestock and poultry, fisheries, and consolidated municipal reports, analytical dashboards with visual charts and graphs, persisted statistical summaries, historical recorded production trends, audit reports, and backup recovery files.
+
+
+
+
+
+
+Statement of the Problem
+      This study aims to develop a digital agricultural data management system for the Office of the Municipal Agriculturalist of LGU Kinoguitan, Misamis Oriental to improve cross-sector data management, reporting, analytics, and decision-making processes.
+Specifically, this study seeks to answer the following questions: 
+1. How can a unified agricultural producer and production-record system be developed in terms of:
+1.1 agricultural producer profiling,
+1.2 farm, plot, planting, and crop harvest monitoring,
+1.3 livestock and poultry inventory and production monitoring,
+1.4 fisherfolk registration and municipal fish catch monitoring, and
+1.5 aquaculture site and culture-cycle monitoring?
+2. How can the system implement data validation and consistency-checking mechanisms in terms of:
+2.1 error detection in crop, livestock and poultry, fisheries, and aquaculture data entries,
+2.2 prevention of duplicate producer and production records, and
+2.3 ensuring valid dates, non-negative quantities, and reliable relationships among sector records?
+3. How can the system facilitate the Municipal Agriculturalist in generating reports for: 
+3.1 crop production and seasonal farm inventory,
+3.2 livestock and poultry inventory,
+3.3 municipal fisheries catch,
+3.4 farmer registry and annual municipal agriculture summaries, and
+3.5 municipal and provincial use based on stakeholder-approved reporting requirements?
+4. How can the system provide descriptive data analytics and decision support through:
+4.1 statistical summaries generated through database computations,
+4.2 interactive dashboards and graphical visualization, and
+4.3 historical recorded trends for crop, livestock and poultry, and fisheries data?
+Objectives of the Study
+General Objective 
+      The study aims to develop a digital agricultural data management system for the Office of the Municipal Agriculturalist of LGU Kinoguitan, Misamis Oriental to centralize crop, livestock and poultry, fisheries, and aquaculture records and improve automated reporting, descriptive analytics, and evidence-based decision-making. Specific Objectives 
+Specifically, this study aims to: 
+1. Develop a unified agricultural producer and production-record system for producer profiling; farm, plot, planting, and harvest monitoring; livestock and poultry inventory and production; fisherfolk and fish catch records; and aquaculture sites and culture cycles.
+2. Develop sector-appropriate data validation and consistency-checking mechanisms to detect errors, prevent duplicate entries, validate dates and quantities, and ensure the reliability of agricultural records.
+3. Develop automated report generation functionalities that enable the Municipal Agriculturalist to produce the Quarterly Crop Production Report, Seasonal Farm Inventory Report, Annual Municipal Agriculture Summary, Farmer Registry, Livestock and Poultry Inventory Report, and Municipal Fisheries Catch Report through authenticated server-side database query functions. The final fields and formats for external submissions shall be validated with the OMA and receiving offices.
+4. Develop an agricultural analytics module that provides SQL-computed descriptive statistical summaries, interactive dashboards with graphical visualizations, barangay and species comparisons, and historical recorded trends for crops, livestock and poultry, and fisheries to support evidence-based decision-making. 
+________________
+
+
+Scope and Delimitations of the Study
+      This study focuses on the design, development, and evaluation of AGRODATA, a web-based agricultural data management system for the Office of the Municipal Agriculturalist (OMA) of LGU Kinoguitan, Misamis Oriental. The system aims to address issues such as the absence of a centralized digital database, inefficient manual report preparation, difficulties in retrieving agricultural records, inconsistencies in data management, and the lack of data-driven analytics for agricultural planning across crop, livestock and poultry, fisheries, and aquaculture activities.
+      AGRODATA includes modules for a unified agricultural producer registry, agricultural land and farm-plot records, crop catalog and planting and harvest monitoring, livestock species and periodic inventory and production records, fisherfolk profiles and municipal fish catch records, and aquaculture sites and stocking-to-harvest cycles. The existing Farmers table serves as the shared producer record so that one person may be linked to crop, livestock and poultry, fisheries, or aquaculture activities without creating separate identities. The system also features automated report generation through Supabase Edge Functions for the Quarterly Crop Production Report, Seasonal Farm Inventory Report, Annual Municipal Agriculture Summary, Farmer Registry, Livestock and Poultry Inventory Report, and Municipal Fisheries Catch Report. These reports are compiled from validated database records; any format intended for official external submission remains subject to confirmation by the OMA and the receiving office. Data validation mechanisms detect missing or invalid entries, enforce non-negative quantities, prevent inconsistent harvest dates, and preserve relationships among producers and sector records. Furthermore, the analytics module provides descriptive SQL-based statistical summaries, dashboards, barangay and species comparisons, and historical recorded trends for crops, livestock and poultry, and fisheries.
+      The system is intended solely for authorized OMA personnel, including the Municipal Agriculturalist and office staff. Farmers, livestock and poultry raisers, fisherfolk, and aquaculture operators will not directly access or operate the system but may benefit indirectly through improved agricultural data management and service delivery. The study is limited to a web-based platform and does not include a mobile application, online public access, or automatic integration with regional and national agricultural information systems.
+      The study is limited to administrative record management and descriptive statistical analysis based on encoded agricultural data. It does not perform predictive analytics, machine learning, or production forecasting. It also excludes veterinary diagnosis and treatment, laboratory and biosecurity case management, fisheries licensing and enforcement, vessel tracking, individual-animal traceability, commercial accounting, and market-price management.
+
+
+Significance of the Study
+The development of the AGRODATA for LGU Kinoguitan is expected to provide significant benefits to the following stakeholders:
+Municipal Agriculturalist and OMA Staff. The system directly resolves the identified problems of the office. The Municipal Agriculturalist and OMA staff will benefit from a centralized digital platform that eliminates fragmented paper-based record keeping, enables fast retrieval of crop, livestock and poultry, fisherfolk, fish catch, and aquaculture records, and automates sector and consolidated report generation through server-side functions. The analytics and decision support features will provide SQL-computed descriptive summaries, interactive dashboards, and historical recorded trends, enabling the Municipal Agriculturalist to make informed decisions regarding agricultural programs, resource allocation, and policy recommendations.
+      Agricultural Producers. Crop farmers, livestock and poultry raisers, fisherfolk, and aquaculture operators in the municipality will benefit indirectly from the system, which is operated by authorized OMA personnel. By improving the organization and accuracy of cross-sector agricultural data, the system supports better program targeting and more efficient delivery of government services and interventions. Unified producer records also reduce repeated encoding when a person participates in more than one agricultural sector.
+      Local Government Unit of Kinoguitan. The LGU will benefit from improved data management capabilities that support evidence-based policy formulation and agricultural planning. Timely crop, livestock and poultry, fisheries, and aquaculture information will provide municipal officials with a broader description of local food-production activities and support strategic planning and resource allocation decisions.
+      Provincial Agriculture Office and Partner Agencies. The Provincial Agriculture Office and relevant partner agencies may receive more accurate, consistent, and timely agricultural summaries from the municipality. Report fields, classifications, schedules, and formats intended for external submission shall be validated with the concerned office before the system claims formal compliance.
+      Future Researchers. This study will serve as a valuable reference for future researchers and capstone proponents developing information systems for government agencies, particularly those addressing integrated crop, livestock and poultry, fisheries, and aquaculture data banking, records management, automated reporting, and descriptive analytics for decision support.
+
+
+________________
+
+
+Output of the Study
+The study will develop a fully functional, web-based AGRODATA for the Office of the Municipal Agriculturalist of LGU Kinoguitan, Misamis Oriental. The system will replace fragmented manual processes with a centralized and secure PostgreSQL database that stores unified agricultural producer profiles; farm, plot, planting, and harvest records; livestock species, inventories, and production records; fisherfolk and fish catch records; and aquaculture sites and culture cycles. It will incorporate an automated report generation module implemented through authenticated Supabase Edge Functions that query, aggregate, and format production records into the Quarterly Crop Production Report, Seasonal Farm Inventory Report, Annual Municipal Agriculture Summary, Farmer Registry, Livestock and Poultry Inventory Report, and Municipal Fisheries Catch Report. Final external reporting formats and signatories will remain subject to stakeholder validation. Search, filtering, pagination, and validated data-entry forms will enable efficient retrieval and maintenance of records across all covered sectors.
+      Furthermore, the system will feature an agricultural analytics dashboard that transforms recorded agricultural data into descriptive statistical summaries through automated SQL-based computations. The analytics module executes aggregation queries against the PostgreSQL database to compute totals, averages, counts, and distributions across barangays, crops, livestock and poultry species, fisheries subsectors, and reporting periods. The resulting values are stored in crop, livestock, and fisheries statistical-summary tables and displayed through interactive charts. The dashboard presents crop area and yield indicators, livestock and poultry inventory by species, municipal fish catch by subsector, aquaculture harvest totals, barangay-level comparisons, and historical recorded trends to support evidence-based agricultural planning and decision-making.
+
+
+________________
+
+
+Definition of Terms
+The following terms are defined as used in this study:
+Agricultural Data Banking. The systematic digital collection, storage, and organization of all agricultural data managed by the OMA, replacing paper-based record keeping with a centralized database system.
+Agricultural Analytics. The process of summarizing recorded agricultural data using descriptive statistics such as totals, averages, counts, and percentages, computed through SQL-based aggregation queries executed against the database, and rendered as graphical visualizations through the system's charting library to support agricultural planning. 
+Agricultural Produce. Refers to the crops and agricultural products harvested within the municipality, including recorded information on planting activities, harvests, yield data, and other crop-related agricultural records managed and analyzed through the AGRODATA system.
+Agricultural Producer. A person recorded by the OMA who participates in one or more agricultural activities, including crop farming, livestock or poultry raising, municipal fishing, or aquaculture. The implemented Farmers record serves as the unified producer profile for these activities.
+Livestock and Poultry Inventory. A dated record of the number of livestock or poultry maintained by a producer, organized by animal species, barangay, and reporting period, together with births, deaths, dispositions, and applicable production quantities.
+Fisherfolk. An agricultural producer engaged in municipal capture fishing whose activity profile may include barangay, level of involvement, vessel type, and gear type.
+Fisheries. The sector covered by AGRODATA that includes marine municipal fishing, inland municipal fishing, and managed aquaculture production records within the approved scope of the OMA.
+Fish Catch Record. A dated record of a fisherfolk's catch that identifies the fisheries subsector, species name, quantity, unit, and relevant remarks.
+Aquaculture. The managed culture of aquatic organisms in a pond, cage, tank, pen, or other approved production site.
+Aquaculture Cycle. A stocking-to-harvest record for an aquatic species at an aquaculture site, including stocking date and quantity, harvest date and quantity when available, unit, and cycle status.
+Automated Report Generation. The system functionality that compiles and formats agricultural data through authenticated server-side database query functions. The implemented reports include the Quarterly Crop Production Report, Seasonal Farm Inventory Report, Annual Municipal Agriculture Summary, Farmer Registry, Livestock and Poultry Inventory Report, and Municipal Fisheries Catch Report. Formats intended for external submission remain subject to stakeholder validation.
+Dashboard. A visual display interface that presents key performance indicators, descriptive statistical summaries, and graphical representations of crop, livestock and poultry, fisheries, and aquaculture data, enabling quick comprehension of recorded information.
+Decision Support System. A component of the information system that provides SQL-computed descriptive statistical summaries, interactive dashboards, historical recorded trend visualizations, and sector reports that assist the Municipal Agriculturalist in evidence-based decision-making.
+Farmer Profile or Unified Agricultural Producer Profile. A comprehensive identity and registration record for a person engaged in one or more covered agricultural sectors. It links the producer to applicable farm and crop, livestock and poultry, fisherfolk and fish catch, and aquaculture records without creating separate identities.
+Information System. A set of interconnected components that collect, process, store, and communicate data and information in support of decision-making and organizational management.
+      Agricultural Data Management System in Agricultural Offices (AGRODATA). The web-based information system developed in this study for the Office of the Municipal Agriculturalist of LGU Kinoguitan for centralizing and managing all agricultural data, including monitoring, reporting, analytics, and decision support.
+Local Government Unit (LGU). Refers to the Municipal Government of Kinoguitan, Misamis Oriental, which is responsible for local governance and delivery of basic services within its jurisdiction.
+Municipal Agriculturalist. The government official designated by the LGU who is responsible for planning, implementing, and coordinating agricultural programs and services within the municipality.
+Office of the Municipal Agriculturalist (OMA). The office within the LGU is tasked with agricultural development, extension services, and management of agricultural data and programs.
+Provincial Agriculture Office Reports. Agricultural reports prepared for municipal or provincial use based on validated database records. Their fields, schedules, classifications, signatories, and layouts must be confirmed with the OMA and the receiving office before formal compliance is claimed.
+      Statistical Summary. A compilation of computed values including totals, averages, distributions, and other descriptive statistics derived from agricultural data to provide quantitative insights.
+      Trend Analysis. The examination of historical data patterns over time, performed by querying time-series agricultural production records in the database and rendering the resulting data as line or bar charts, to identify directions, patterns, and changes in agricultural production metrics.
+ Web-Based Application. A software application accessed through a web browser over a computer network such as the Internet or a local area network (LAN).
+________________
+
+
+CHAPTER II  
+REVIEW OF RELATED LITERATURE AND STUDIES
+This chapter presents a review of related literature and studies that provide theoretical and empirical support for the development of the AGRODATA: An agricultural data management system in agricultural offices for the Office of the Municipal Agriculturalist of LGU Kinoguitan, Misamis Oriental. 
+
+
+Agricultural Data Banking Systems
+The concept of agricultural data banking refers to the centralized digital collection, storage, and management of all agricultural records within a government office or agency. Wolfert et al. (2023) emphasized that the shift from paper-based to digital agricultural data management systems has become essential for modern agricultural governance, noting that data banking provides the foundation for precision agriculture and informed policy decisions at the local government level. Their review demonstrated that local agricultural offices that adopted digital data banking systems experienced measurable improvements in data accuracy, completeness, and accessibility compared to those still relying on paper records.
+In the Philippine context, the Provincial Agriculture has been actively promoting the digitization of agricultural records through various national programs. The Philippine Statistics Authority (PSA, 2023) has repeatedly emphasized that incomplete and inconsistent local agricultural data poses a significant challenge to national food security planning. Studies on LGU-level digital transformation in the Philippines have found that the implementation of digital data banking systems in municipal agriculture offices significantly reduced data inconsistencies and improved the completeness of agricultural records submitted to higher government agencies (Dela Cruz et al., 2021).
+Batoon et al. (2023) developed a Farm Data Management System for the municipal agriculture office in San Ildefonso, which addressed the same core problem of the absence of a digital data banking system. Their study found that the system enabled the agriculture office to maintain a comprehensive and current database of registered farmers, landholdings, and crop production activities, and significantly reduced the time required for data management tasks. These findings directly support the first objective of the present study, which aims to develop a centralized digital data banking system for the OMA of LGU Kinoguitan.
+
+
+Automated Report Generation in Government Agricultural Offices
+The preparation of reports for submission to higher government agencies such as the Provincial Agriculture is a critical function of municipal agriculture offices. Kumar et al.  (2023) conducted a study on a web-based agricultural information system for a district agriculture office in India and found that automated report generation reduced the time required to produce official agricultural produced reports by seventy percent compared to the manual process. Their study also found that automated reports were significantly more accurate than manually prepared ones, as they drew directly from the system database rather than relying on manual compilation from scattered paper records.
+Gonzales et al. (2022) developed a web-based agricultural produced monitoring system for a provincial agriculture office in Mindanao, Philippines, and specifically highlighted the importance of automated report generation features in reducing the administrative burden on agricultural officers. Their study found that the system's report generation module enabled the office to produce consolidated production reports in a fraction of the time previously required, and that the accuracy and consistency of the reports improved substantially. These findings are directly relevant to the second objective of the present study, which aims to design and implement an automated report generation module for the OMA of LGU Kinoguitan.
+Radhakrishnan (2025) further noted that one of the most impactful benefits of e-government information systems in agricultural offices is the elimination of the bottleneck caused by manual report preparation, which often results in delayed submissions to oversight agencies. The automation of routine reporting tasks frees agricultural officers to focus on more substantive activities such as field extension work and farmer support programs.
+
+
+Agricultural Produce Records Management
+Effective management of agricultural produce records is fundamental to the operations of any municipal agriculture office. Basir et al. (2024) emphasize that on-farm recordkeeping is essential in agricultural digitalization, as it provides critical data for economic analysis and informed decision-making. Their study highlights the transition from traditional paper-based recordkeeping to digital systems that integrate various tools such as farm management software, web applications, and mobile applications. However, they also note that these systems vary widely in data recording methods, which can lead to challenges in achieving complete, accurate, and interoperable data. This underscores the importance of implementing efficient and well-structured digital recordkeeping systems that enhance data quality, accessibility, and interoperability in agricultural management.
+Moreover, Zhang et al. (2020) explored cloud-based agricultural data management systems in China and found that centralized produced records management enabled provincial agriculture departments to improve coordination and generate comprehensive agricultural statistics. Their study highlighted that without a structured digital records management system, agricultural data becomes fragmented and inconsistent over time, making it increasingly difficult to retrieve accurate historical produce data for planning purposes. These findings support the third objective of the present study, which aims to implement a produce records management module with advanced search and retrieval capabilities.
+In the local context, Dela Cruz et al. (2021) developed an agricultural management information system for a municipality in Nueva Ecija, Philippines, and specifically found that the system's records management module resolved the problem of delayed and inconsistent data retrieval that had previously characterized the office's manual system. Their evaluation confirmed that OMA staff were able to locate specific farmer and produce records significantly faster using the digital system compared to the manual filing system.
+
+
+Agricultural Analytics and Decision Support Systems
+The integration of data analytics and decision support capabilities in agricultural information systems represents a significant advancement in modern agricultural governance. Htun et al. (2022) emphasized the importance of developing visual-assisted decision support systems in agriculture, noting that dashboards and graphical representations of agricultural data enable officials to quickly comprehend complex information and make informed decisions. Their study found that visual analytics significantly improved the ability of agricultural officers to identify trends, anomalies, and patterns in production data that would otherwise remain hidden in tabular reports.
+Kumar et al. (2023) highlighted that information and communication technologies in agriculture have evolved beyond simple data storage to encompass analytical capabilities that transform raw data into actionable insights. Their comprehensive review demonstrated that agricultural information systems with integrated analytics features, including statistical summaries and trend analysis, substantially improved the quality of agricultural planning at the local government level. These systems enabled agricultural officers to move from reactive to proactive management approaches.
+Garcia Juan (2026) conducted a socio-technical systems analysis of agricultural enterprises and found that digital systems with analytical capabilities are essential for supporting evidence-based decision-making in agricultural management. The study emphasized that statistical analysis and trend visualization help agricultural managers identify production patterns, optimize resource allocation, and anticipate potential challenges before they escalate.
+Furthermore, Davis and Granić (2024), in their comprehensive review of technology acceptance models, noted that systems offering tangible benefits such as data-driven insights and analytical dashboards demonstrate higher user adoption rates compared to systems that merely digitize existing manual processes. This underscores the importance of incorporating analytics and decision support features to enhance the value proposition of agricultural information systems and ensure sustained usage by end-users.
+In the Philippine context, Gonzales et al. (2022) observed that provincial agriculture offices increasingly require municipal-level systems to provide not just raw data submissions but also analytical summaries that support regional planning initiatives. Their study found that systems with built-in analytics capabilities reduced the analytical burden on provincial staff and improved the overall quality of agricultural planning across multiple municipalities. These findings directly support the fourth objective of the present study, which aims to develop an analytics and decision support module for the OMA of LGU Kinoguitan.
+
+
+Integrated Crop, Livestock, and Fisheries Information Systems
+Agricultural information at the municipal level extends beyond crop production. The Philippine Statistics Authority's Philippine Food Security Information System organizes food-security information under crops, livestock and poultry, and fisheries, while the PSA Agriculture, Forestry and Fisheries database publishes statistical tables for these production domains (Philippine Statistics Authority, n.d.-a; Philippine Statistics Authority, n.d.-b). This sector grouping supports the expansion of AGRODATA into an integrated platform while recognizing that each sector requires distinct records, classifications, quantities, and production events.
+A shared agricultural producer profile is important because a household may participate in more than one activity, such as crop farming, livestock raising, fishing, or aquaculture. A unified identity record reduces duplicate registration while sector-specific tables preserve the different workflows for farms and harvests, animal inventories, municipal fish catch, and managed aquaculture cycles. In AGRODATA, the existing farmer profile performs this shared producer function and links the individual to the applicable production records.
+
+
+Livestock and Poultry Records Management
+The Philippine Statistics Authority's technical notes on livestock and poultry statistics identify production volume, animal inventory, and slaughter or disposition as important measures for describing the sector (Philippine Statistics Authority, 2025). These measures demonstrate that livestock and poultry data cannot be represented accurately through crop planting and harvest records alone. Periodic inventory by animal species and location, together with births, deaths, dispositions, and production quantities, provides the OMA with a practical municipal record of animal activity.
+For the present study, the livestock and poultry component records a producer, animal species, category, barangay, reference date, inventory count, births, deaths, disposed animals, and optional production type, quantity, unit, and notes. Validation prevents negative counts and quantities. The component is intended for inventory and production monitoring only and does not replace veterinary diagnosis, laboratory testing, disease surveillance, or individual-animal traceability systems.
+
+
+Fisheries and Aquaculture Records Management
+Philippine fisheries statistics distinguish commercial, municipal, and aquaculture production, while municipal fisheries may be described as marine or inland. This distinction supports separate capture-fisheries and aquaculture records rather than a single undifferentiated production entry. Capture-fisheries records identify fisherfolk activity, catch date, subsector, species, quantity, and unit, whereas aquaculture records require a managed site and a stocking-to-harvest cycle.
+The Department of Agriculture-Bureau of Fisheries and Aquatic Resources' Philippine Fisheries and Coastal Resiliency Project emphasizes the importance of resilient fisheries and aquaculture development and the use of information in planning interventions (Bureau of Fisheries and Aquatic Resources, n.d.). The Food and Agriculture Organization also documents the integration of fish with crop and livestock farming and the importance of regular aquaculture recordkeeping for production management (Food and Agriculture Organization, n.d.-a; Food and Agriculture Organization, n.d.-b). These sources support the inclusion of fisherfolk, fish catch, aquaculture site, stocking, status, and harvest information in AGRODATA, while fisheries licensing, enforcement, and vessel tracking remain outside the system scope.
+
+
+Summary
+The review of related literature and studies reveals strong and consistent evidence supporting the development of AGRODATA for LGU Kinoguitan as an integrated agricultural data management system. The reviewed studies identify the same core problems addressed in this study: the absence of a centralized data bank, time-consuming and inaccurate report preparation, difficulty in retrieving production records, weak validation, and the limited availability of descriptive information for agricultural decision-making. Philippine statistical systems further demonstrate that municipal agricultural information should account for crops, livestock and poultry, and fisheries rather than treating agriculture as crop production alone.
+      The literature on agricultural data banking confirms that centralized digital systems improve data accuracy, completeness, accessibility, and retrieval. Studies on automated report generation demonstrate that system-generated reports can reduce manual compilation and improve consistency. Literature on livestock and poultry statistics supports periodic inventory and production-event records, while fisheries and aquaculture references support separate fisherfolk catch records and managed stocking-to-harvest cycles. Research on agricultural analytics and decision support underscores the value of transforming validated records into descriptive totals, counts, averages, distributions, comparisons, and historical trends.
+      The present study is distinct from the reviewed studies because it addresses these requirements in one web-based system designed for the OMA of LGU Kinoguitan, Misamis Oriental. AGRODATA uses a shared agricultural producer profile with specialized crop, livestock and poultry, municipal fisheries, and aquaculture records; server-side sector reports and computations; and common validation, role-based access, audit, and backup controls. The added sector fields and external report formats remain subject to validation against the actual forms and procedures of the OMA and concerned receiving offices.
+________________
+CHAPTER III  
+METHODS AND MATERIALS
+Research Design
+This study employed the developmental research design, which is appropriate for studies aimed at designing, developing, and evaluating a specific product, system, or program intended to solve an identified practical problem. According to McKenney and Reeves (2021), research design involves the iterative design, development, and evaluation of digital systems and solutions, aimed at solving real-world problems while generating practical and theoretical knowledge. This design was selected because the primary purpose of this study is the creation and evaluation of the AGRODATA for the OMA of LGU Kinoguitan, which directly addresses the identified problems of the office.
+The research approach adopted in this study is applied research, as it is directed toward solving a specific, real-world problem experienced by the Office of the Municipal Agriculturalist of LGU Kinoguitan. The study followed a systematic process of problem identification through consultation with the Municipal Agriculturalist, requirements analysis, system design, development, testing, and evaluation. This approach ensured that the developed system is closely aligned with the actual needs and operational context of the OMA.
+
+
+
+
+
+
+
+
+
+
+Figure 2 
+Agile Software Development Model
+  
+
+Agile is a software development methodology centered on iterative and incremental progress, where systems are created through small cycles called sprints. Each sprint delivers a functional component that can be tested and refined based on feedback. This method encourages flexibility, ongoing assessment, and close collaboration between developers and users. McKenney and Reeves (2021) note that Agile supports digital systems for practical problem-solving, while Kumar et al. (2023) highlight the importance of flexible development approaches for modern information systems, especially those managing dynamic data like agricultural records.  
+The Agile model was chosen for this study because it allows continuous refinement of the Agricultural Data Management System in agricultural offices. Supporting this, Koldovskyi et al. (2025) and Radhakrishnan (2025) emphasized that adaptive and flexible methodologies are essential for creating effective e-government systems, reinforcing Agile is suitable for this project.
+The choice of Agile for developing AGRODATA was a deliberate and practical decision based on the project's context. Since the system was intended for a government agricultural office with no prior experience in digital systems, the development team could not define all requirements upfront. Changes, clarifications, and new needs were expected throughout the process, making Agile the most suitable methodology to accommodate these evolving demands. Similarly, Batoon et al. (2023) faced this scenario when creating a farm data management system for a municipal agriculture office, noting that many operational requirements only became evident as users engaged with early system versions. Gonzales et al. (2022) had comparable findings when using Scrum to develop a web-based agricultural produced crops monitoring system, highlighting that regular sprint reviews allowed agricultural officers to observe progress and provide feedback that significantly improved the final outcome. 
+Both studies illustrate that Agile is particularly effective in agricultural offices, especially at the local government level, because it frames system development as a collaborative process between developers and end-users. Instead of a one-time handoff of requirements followed by isolated coding, Agile encourages ongoing interaction and feedback. This approach was precisely how AGRODATA was developed, with the Municipal Agriculturalist and OMA staff actively involved in every sprint. Their continuous participation ensured that each delivered module met actual needs and was practical for use. 
+
+
+________________
+
+
+Research Setting
+Figure 3
+Location of the Municipal Agriculture Office
+  
+  
+
+The study will be conducted at the Office of the Municipal Agriculturalist of the Local Government Unit of Kinoguitan, Misamis Oriental. Kinoguitan is a municipality located in the province of Misamis Oriental, Region X (Northern Mindanao), Philippines. Agriculture is an important source of livelihood in the municipality and includes crop farming, livestock and poultry raising, municipal fishing, and aquaculture. The OMA of Kinoguitan is responsible for overseeing agricultural activities and programs within the municipality and was selected as the research setting because it exemplifies the multi-sector data management challenges that this study seeks to address.
+
+
+Data Gathering
+The data gathering process for this study was carried out in two main phases to ensure a thorough understanding of the existing agricultural data management practices at the Office of the Municipal Agriculturalist (OMA) of LGU Kinoguitan.
+In the first phase, the proponents held a formal consultation with the Municipal Agriculturalist to identify current data management practices, assess the limitations of the existing manual system, and gather initial system requirements. They also reviewed relevant documents, including producer-registration records, farm and crop forms, livestock and poultry inventory records, fisherfolk and fish catch forms, aquaculture records, and municipal or provincial reports. This document analysis provided the foundation for designing the system's shared producer record, sector-specific database tables, input forms, and report parameters.
+In the second phase, follow-up consultations and informal interviews were conducted with OMA staff responsible for crop, livestock and poultry, fisheries, and aquaculture records to gain further insights into their workflows, challenges, terminology, units, reporting schedules, and expectations for the proposed system. The information gathered from these interactions was used to refine the system requirements. Data fields and report formats derived from secondary sources shall be confirmed against the OMA's actual forms before being treated as official requirements.
+
+
+Research Instruments
+This study will use a semi-structured interview guide, a document-analysis and data-field validation checklist, and the International Organization for Standardization/IEC 25010 software quality evaluation tool as the research instruments. The semi-structured interview guide will be used during consultations with the Municipal Agriculturalist and OMA personnel to understand crop, livestock and poultry, fisheries, and aquaculture data practices; identify existing challenges; and gather the functional and non-functional requirements needed for the proposed system. The document-analysis checklist will record each required field, definition, unit, source form, frequency, responsible encoder, reviewer, and report destination. These instruments will help validate the identified problems and prevent unsupported assumptions about sector forms or external compliance.
+In addition, the ISO/IEC 25010 software quality evaluation tool will be used to assess the quality, functionality, and overall acceptability of the developed digital agricultural data management system. This evaluation standard is widely used in software development studies to measure whether a system meets user needs and performs efficiently. The evaluation will focus on key software quality characteristics such as functional suitability, performance efficiency, usability, reliability, security, maintainability, and portability. 
+The ISO/IEC 25010 evaluation questionnaire will be answered by the intended users of the system, including the Municipal Agriculturalist and OMA staff responsible for the covered agricultural sectors. Their responses will help determine whether the developed system is effective, user-friendly, secure, and capable of supporting integrated agricultural data management and decision-making processes. The results of the evaluation will also serve as the basis for identifying possible improvements and ensuring that the system meets acceptable software quality standards.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+System Design
+The system design consists of as following;
+Current System
+Figure 4
+Current process flow
+  
+
+            The current process flow starts when agricultural producers and field personnel provide crop, livestock and poultry, fisheries, and aquaculture information to the OMA. Staff manually record the information in forms, notebooks, logbooks, or separate files and store the records for safekeeping. When a municipal or provincial summary is required, staff return to the applicable sector records and manually compile the needed information, which takes considerable time and effort. The process does not provide one searchable producer record across sectors, automated report generation, persisted statistical summaries, dashboard visualization, or common validation. This makes the process slow and vulnerable to data loss, duplication, inconsistency, and difficulty in retrieving specific records. The absence of integrated analytical tools also prevents the office from readily comparing crop production, animal inventory, fish catch, and aquaculture activity for evidence-based planning.
+
+
+Proposed System 
+Figure 5
+Proposed System Flow
+  
+
+The proposed AGRODATA: an agricultural data management system in agricultural offices will replace the fragmented manual data management processes of the OMA with a centralized, web-based platform covering crops, livestock and poultry, municipal fisheries, and aquaculture. Authorized OMA staff first search for an existing agricultural producer before registering a new profile. They then encode the applicable sector record: farm, plot, planting, and harvest information for crops; species, inventory, births, deaths, dispositions, and production for livestock and poultry; fisherfolk activity and catch by date, subsector, species, quantity, and unit for municipal fisheries; or site and stocking-to-harvest cycle information for aquaculture. The system validates required information, non-negative quantities, dates, and parent-child relationships before saving records to PostgreSQL and recording applicable actions in the audit log.
+      The Municipal Agriculturalist reviews the encoded records and descriptive dashboards and generates reports through authenticated Supabase Edge Functions. The implemented report types are the Quarterly Crop Production Report, Seasonal Farm Inventory Report, Annual Municipal Agriculture Summary, Farmer Registry, Livestock and Poultry Inventory Report, and Municipal Fisheries Catch Report. Edge Functions execute database queries and return compiled report data for preview, PDF, Excel, CSV, or printing. The analytics function computes and persists crop yield, livestock and poultry, and fisheries summaries for monthly, quarterly, or yearly periods. Dashboard indicators also present recorded aquaculture harvest totals. These analytics describe recorded data only and do not forecast future production. External report layouts remain subject to validation with the OMA and receiving offices.
+________________
+
+
+Figure 6
+System Architecture of the Proposed System
+  
+
+The system architecture of AGRODATA follows a three-tier client-server model. The Presentation Layer is a React and TypeScript single-page application containing shared role-aware modules for producer profiles, farms and crops, livestock and poultry, fisherfolk and fish catch, aquaculture sites and cycles, analytics, reports, users, audit, and backup. OMA staff use the shared record-management pages as encoders, while Municipal Agriculturalist access controls protect reporting, user administration, audit review, and backup operations; separate duplicate pages for each role are unnecessary.
+      The Application Layer uses Supabase authentication, auto-generated database APIs under Row Level Security for record operations, and Supabase Edge Functions for server-side report generation and statistical computation. TanStack Query manages frontend data fetching and caching. The Data Layer uses a normalized PostgreSQL database containing shared user and producer records and specialized crop, livestock and poultry, fisheries, aquaculture, and statistical-summary tables. Foreign keys, checks, indexes, role policies, and audit records support integrity and accountability. Processed data is returned to the Presentation Layer for chart rendering and report export.
+
+
+________________
+
+
+Technology Stack
+Frontend 
+* React 18 - JavaScript library for building user interfaces with component-based architecture
+* Vite - Next-generation frontend build tool for fast development and optimized production builds
+* TypeScript - Typed superset of JavaScript for enhanced code quality and maintainability
+* Tailwind CSS - Utility-first CSS framework for rapid UI development and consistent styling
+* shadcn/ui - Accessible and customizable component library built on Radix UI primitives
+* React Router - Client-side routing for single-page application navigation
+* TanStack Query (React Query) - Data fetching, caching, and state management for server state
+* Recharts - Charting library for data visualization and analytics dashboards
+* Web Browser (Chrome/Edge) - Client interface for accessing the system
+Backend (Application Layer)
+* Supabase - Open-source Backend-as-a-Service (BaaS) platform providing:
+* PostgreSQL Database - Relational database for storing agricultural data
+*  Supabase Auth - Built-in authentication and user management
+* Supabase Storage - File storage for documents and reports
+*  Edge Functions - Serverless functions for custom backend logic
+* Row Level Security (RLS) - Database-level access control policies
+* RESTful API - Auto-generated APIs from Supabase for database operations
+* Real-time Subscriptions - Live data updates for collaborative features
+Database 
+* PostgreSQL (via Supabase) - Relational database for storing unified agricultural producer profiles and crop, livestock and poultry, fisheries, aquaculture, report, statistics, audit, and backup data with integrity constraints and Row Level Security
+APIs (System Integration)
+* Supabase Auth API - Handles login, registration, and role-based access control
+* Supabase Database API - Auto-generated REST and GraphQL APIs for CRUD operations
+* Supabase Storage API - File upload and management for reports and documents
+Hosting / Deployment
+* Vercel / Netlify - Frontend hosting with automatic deployments and CDN distribution
+* Supabase Cloud - Managed PostgreSQL database and backend services
+* Local Development - Vite dev server for development and Supabase local emulator for testing
+
+
+Hardware Requirements
+To use the AGRODATA system, users must have:
+* Processor: Intel Core i3 or higher
+* RAM: At least 4 GB
+* Storage: At least 128 GB available space
+* Monitor: 1366 × 768 resolution or higher
+* Input Devices: Keyboard and Mouse
+* Network: Local Area Network (LAN) or Internet connection
+* Printer: Optional (for printing reports)
+Software Requirements
+Users must have the following:
+* Operating System: Windows 10 or higher
+* Web Browser: Google Chrome / Microsoft Edge
+* AGRODATA System: Web-based application hosted locally or online
+* Database and Backend Services: Supabase Cloud with PostgreSQL, Authentication, Row Level Security, REST APIs, and deployed Edge Functions
+* Frontend Hosting: A configured static web host such as Vercel or Netlify, or an approved local deployment
+* Development tools such as Node.js are required only on developer workstations for building the React application and are not required on ordinary user computers.
+________________
+
+
+Figure 7
+Entity Relationship Diagram of the AGRODATA
+  
+
+
+
+Data Base Structure
+        The AGRODATA database structure is a normalized PostgreSQL relational design that organizes shared user and agricultural producer data together with specialized crop, livestock and poultry, fisheries, aquaculture, and statistical-summary records. The existing Farmers table serves as the unified agricultural producer registry and may be linked to one or more sector activities. Foreign keys, checks, indexes, and Row Level Security support efficient storage, integrity, authorized access, and accurate reporting.
+Data Dictionary
+Table 1
+User_Roles
+This table is used to store the roles and access levels of system users.
+Field Name
+	Data Type
+	Size
+	Description
+	Constraint
+	role_id
+	INT
+	11
+	Unique identifier of the role
+	Primary Key, Auto Increment
+	role_name
+	VARCHAR
+	50
+	Name of the role
+	Not Null
+	description
+	VARCHAR
+	255
+	Description of the role and permissions
+	Null
+	
+
+Table 2
+Users
+This table is used to store user account information for authentication and system access.
+Field Name
+	Data Type
+	Size
+	Description
+	Constraint
+	user_id
+	INT
+	11
+	Unique identifier of the user
+	Primary Key, Auto Increment
+	role_id
+	INT
+	11
+	Assigned role of the user
+	Foreign Key → User_Roles.role_id
+	first_name
+	VARCHAR
+	100
+	User’s first name
+	Not Null
+	last_name
+	VARCHAR
+	100
+	User’s last name
+	Not Null
+	email
+	VARCHAR
+	100
+	User email address
+	Not Null, Unique
+	username
+	VARCHAR
+	50
+	Login username
+	Not Null, Unique
+	password_hash
+	VARCHAR
+	255
+	Encrypted password string
+	Not Null
+	account_status
+	ENUM
+	ACTIVE, INACTIVE
+	Current status of the account
+	Not Null
+	created_at
+	TIMESTAMP
+	—
+	Date and time the account was created
+	Default CURRENT_TIMESTAMP
+	
+
+Table 3
+Farmers
+This table is used as the unified agricultural producer registry. It stores the personal and registration information of a crop farmer, livestock or poultry raiser, fisherfolk, or aquaculture operator and links one producer identity to applicable sector records.
+Field Name
+	Data Type
+	Size
+	Description
+	Constraint
+	farmer_id
+	INT
+	11
+	Unique identifier of the farmer
+	Primary Key, Auto Increment
+	user_id
+	INT
+	11
+	Linked user account of the farmer
+	Foreign Key → Users.user_id, Null
+	first_name
+	VARCHAR
+	50
+	Farmer’s first name
+	Not Null
+	last_name
+	VARCHAR
+	50
+	Farmer’s last name
+	Not Null
+	sex
+	ENUM
+	MALE, FEMALE
+	Gender of the farmer
+	Not Null
+	birthdate
+	DATE
+	—
+	Birthdate of the farmer
+	Not Null
+	contact_no
+	VARCHAR
+	15
+	Contact number of the farmer
+	Not Null
+	address
+	VARCHAR
+	255
+	Complete address of the farmer
+	Not Null
+	barangay
+	VARCHAR
+	100
+	Barangay location of the farmer
+	Not Null
+	registration_date
+	TIMESTAMP
+	—
+	Date the farmer was registered
+	Default CURRENT_TIMESTAMP
+	
+
+Table 4
+Farms
+This table is used to store agricultural land information owned or managed by farmers.
+Field Name
+	Data Type
+	Size
+	Description
+	Constraint
+	farm_id
+	INT
+	11
+	Unique identifier of the farm
+	Primary Key, Auto Increment
+	farmer_id
+	INT
+	11
+	Owner or manager of the farm
+	Foreign Key → Farmers.farmer_id
+	farm_name
+	VARCHAR
+	100
+	Name of the farm
+	Not Null
+	barangay
+	VARCHAR
+	100
+	Barangay location of the farm
+	Not Null
+	total_area
+	DECIMAL
+	10,2
+	Total land area of the farm
+	Null
+	soil_type
+	ENUM
+	CLAY, LOAM, SANDY
+	Dominant soil type of the farm
+	Null
+	irrigation_type
+	ENUM
+	RAINFED, IRRIGATED
+	Method of farm irrigation
+	Null
+	
+
+________________
+
+
+Table 5
+Farm_Plots
+This table is used to store subdivisions or plots within a farm.
+Field Name
+	Data Type
+	Size
+	Description
+	Constraint
+	plot_id
+	INT
+	11
+	Unique identifier of the plot
+	Primary Key, Auto Increment
+	farm_id
+	INT
+	11
+	Farm where the plot belongs
+	Foreign Key → Farms.farm_id
+	plot_number
+	VARCHAR
+	100
+	Identifier or label of the plot
+	Not Null
+	plot_size
+	DECIMAL
+	10,2
+	Area size of the plot
+	Not Null
+	status
+	ENUM
+	ACTIVE, FALLOW
+	Current usage status of the plot
+	Not Null
+	
+
+Table 6
+Crops
+This table is used to store crop types and classifications.
+Field Name
+	Data Type
+	Size
+	Description
+	Constraint
+	crop_id
+	INT
+	11
+	Unique identifier of the crop
+	Primary Key, Auto Increment
+	crop_name
+	VARCHAR
+	100
+	Common name of the crop
+	Not Null
+	crop_category
+	VARCHAR
+	100
+	Classification of the crop
+	Null
+	expected_harvest_days
+	INT
+	3
+	Estimated number of harvest days
+	Null
+	
+
+Table 7
+Planting_Records
+This table is used to store planting cycle records and crop production activities.
+Field Name
+	Data Type
+	Size
+	Description
+	Constraint
+	planting_id
+	INT
+	11
+	Unique identifier of the planting activity
+	Primary Key, Auto Increment
+	plot_id
+	INT
+	11
+	Plot where planting occurred
+	Foreign Key → Farm_Plots.plot_id
+	crop_id
+	INT
+	11
+	Crop planted in the plot
+	Foreign Key → Crops.crop_id
+	planting_date
+	TIMESTAMP
+	—
+	Date when planting was conducted
+	Not Null
+	expected_harvest_date
+	TIMESTAMP
+	—
+	Expected date of harvest
+	Null
+	actual_harvest_date
+	TIMESTAMP
+	—
+	Actual harvest completion date
+	Null
+	area_planted
+	DECIMAL
+	10,2
+	Area planted for the crop
+	Not Null
+	quantity_planted
+	INT
+	11
+	Quantity of seeds or seedlings planted
+	Null
+	planting_unit
+	VARCHAR
+	50
+	Unit of measurement used in planting
+	Not Null
+	planting_status
+	ENUM
+	PLANTED, HARVEST-ED, SPOILED
+	Current status of planting
+	Not Null
+	
+
+Table 8
+Harvest_Inventory
+This table is used to store harvested crop inventory records.
+Field Name
+	Data Type
+	Size
+	Description
+	Constraint
+	inventory_id
+	INT
+	11
+	Unique identifier of the harvest inventory
+	Primary Key, Auto Increment
+	planting_id
+	INT
+	11
+	Related planting activity record
+	Foreign Key → Planting_Records.planting_id
+	quantity_harvested
+	DECIMAL
+	10,2
+	Total quantity harvested
+	Not Null
+	unit
+	VARCHAR
+	50
+	Unit of measurement of harvested crops
+	Not Null
+	________________
+Table 9
+Yield_Statistics
+This table is used to store computed statistical summaries generated from agricultural production records through SQL aggregation queries executed by server-side functions, supporting dashboard visualizations, compliance report generation, and historical trend analysis. 
+Field Name
+	Data Type
+	Size
+	Description
+	Constraint
+	stat_id
+	INT
+	11
+	Unique identifier of the statistical record
+	Primary Key, Auto Increment
+	crop_id
+	INT
+	11
+	Crop type for the statistical summary
+	Foreign Key → Crops.crop_id
+	barangay
+	VARCHAR
+	100
+	Barangay for the statistical summary
+	Null
+	period_type
+	ENUM
+	
+
+	Type of reporting period
+	Not Null
+	period_start
+	DATE
+	-
+	Start date of the period
+	Not Null
+	period_end
+	DATE
+	-
+	End date of the period
+	Not Null
+	total_area_planted
+	DECIMAL
+	10,2
+	Total area planted during the period
+	Null
+	total_yield
+	DECIMAL
+	10,2
+	Total harvested yield during the period
+	Null
+	average_yield_per_hectare
+	DECIMAL
+	10,2
+	Computed average yield per hectare
+	Null
+	farmer_count
+	INT
+	11
+	Number of farmers involved
+	Null
+	computed_at
+	TIMESTAMP
+	-
+	Date and time the statistics were computed
+	Default CURRENT_TIMESTAMP
+	________________
+
+Table 10
+Livestock_Species
+This table is used to store the reference list of livestock and poultry species.
+Field Name	Data Type	Description	Constraint
+species_id	BIGINT	Unique identifier of the animal species	Primary Key, Identity
+species_name	VARCHAR(100)	Common name of the species	Not Null, Unique
+category	ENUM	LIVESTOCK or POULTRY classification	Not Null
+primary_product	VARCHAR(100)	Primary animal product or purpose	Null
+
+Table 11
+Livestock_Records
+This table stores dated livestock and poultry inventory and production records linked to the unified agricultural producer registry.
+Field Name	Data Type	Description	Constraint
+record_id	BIGINT	Unique identifier of the livestock record	Primary Key, Identity
+farmer_id	BIGINT	Producer associated with the record	Foreign Key → Farmers.farmer_id
+species_id	BIGINT	Recorded animal species	Foreign Key → Livestock_Species.species_id
+barangay	VARCHAR(100)	Barangay represented by the record	Not Null
+record_date	DATE	Inventory or production reference date	Not Null
+inventory_count	INT	Number of animals recorded	Not Null, Default 0, Non-negative
+births	INT	Births or hatches during the period	Not Null, Default 0, Non-negative
+deaths	INT	Deaths during the period	Not Null, Default 0, Non-negative
+disposed	INT	Animals sold, transferred, slaughtered, or otherwise disposed	Not Null, Default 0, Non-negative
+production_type	ENUM	MEAT, MILK, EGGS, or OTHER	Null
+production_qty	DECIMAL(10,2)	Recorded production quantity	Null, Non-negative
+production_unit	VARCHAR(50)	Unit used for production quantity	Null
+notes	TEXT	Additional information about the record	Null
+
+Table 12
+Fisherfolk
+This table stores a fisheries activity profile linked to an existing agricultural producer.
+Field Name	Data Type	Description	Constraint
+fisherfolk_id	BIGINT	Unique identifier of the fisherfolk profile	Primary Key, Identity
+farmer_id	BIGINT	Linked unified producer profile	Foreign Key → Farmers.farmer_id, Unique
+barangay	VARCHAR(100)	Barangay of the fisherfolk activity	Not Null
+involvement	ENUM	FULL_TIME or PART_TIME involvement	Not Null, Default FULL_TIME
+vessel_type	VARCHAR(100)	Vessel reference when applicable	Null
+gear_type	VARCHAR(100)	Fishing gear reference when applicable	Null
+registered_at	TIMESTAMP	Date and time the profile was registered	Default CURRENT_TIMESTAMP
+
+Table 13
+Fish_Catch
+This table stores municipal fish catch records encoded for a registered fisherfolk profile.
+Field Name	Data Type	Description	Constraint
+catch_id	BIGINT	Unique identifier of the catch record	Primary Key, Identity
+fisherfolk_id	BIGINT	Fisherfolk who produced the record	Foreign Key → Fisherfolk.fisherfolk_id
+catch_date	DATE	Date of catch	Not Null
+subsector	ENUM	MARINE_MUNICIPAL or INLAND_MUNICIPAL	Not Null
+species_name	VARCHAR(100)	Common or locally used species name	Not Null
+quantity	DECIMAL(10,2)	Quantity of catch	Not Null, Non-negative
+unit	VARCHAR(50)	Unit of the catch quantity	Not Null, Default kg
+notes	TEXT	Additional information about the catch	Null
+
+Table 14
+Aquaculture_Sites
+This table stores production sites used for managed aquaculture activities.
+Field Name	Data Type	Description	Constraint
+site_id	BIGINT	Unique identifier of the aquaculture site	Primary Key, Identity
+farmer_id	BIGINT	Producer who operates the site	Foreign Key → Farmers.farmer_id
+site_name	VARCHAR(100)	Name or label of the site	Not Null
+barangay	VARCHAR(100)	Barangay where the site is located	Not Null
+site_type	ENUM	POND, CAGE, TANK, or PEN	Not Null
+water_environment	ENUM	FRESHWATER, BRACKISH, or MARINE	Not Null
+area_size	DECIMAL(10,2)	Recorded area of the site	Null, Non-negative
+
+Table 15
+Aquaculture_Cycles
+This table stores the stocking-to-harvest cycle of an aquatic species at an aquaculture site.
+Field Name	Data Type	Description	Constraint
+cycle_id	BIGINT	Unique identifier of the culture cycle	Primary Key, Identity
+site_id	BIGINT	Aquaculture site used for the cycle	Foreign Key → Aquaculture_Sites.site_id
+species_name	VARCHAR(100)	Cultured aquatic species	Not Null
+stocking_date	DATE	Date the cycle was stocked	Not Null
+stocking_qty	DECIMAL(10,2)	Quantity stocked	Null, Non-negative
+harvest_date	DATE	Actual harvest date when completed	Null, Not earlier than stocking date
+harvest_qty	DECIMAL(10,2)	Quantity harvested	Null, Non-negative
+unit	VARCHAR(50)	Unit used for stocking and harvest quantities	Not Null, Default kg
+status	ENUM	STOCKED, HARVESTED, or LOST	Not Null
+
+Table 16
+Livestock_Statistics
+This table stores descriptive livestock and poultry summaries computed by the server-side statistics function for monthly, quarterly, or yearly periods.
+Field Name	Data Type	Description	Constraint
+stat_id	BIGINT	Unique identifier of the statistical record	Primary Key, Identity
+species_id	BIGINT	Species represented by the summary	Foreign Key → Livestock_Species.species_id
+barangay	VARCHAR(100)	Barangay represented by the summary	Null
+period_type	ENUM	MONTHLY, QUARTERLY, or YEARLY	Not Null
+period_start	DATE	Start date of the period	Not Null
+period_end	DATE	End date of the period	Not Null
+total_inventory	INT	Computed total inventory	Null
+total_births	INT	Computed births or hatches	Null
+total_deaths	INT	Computed deaths	Null
+total_disposed	INT	Computed dispositions	Null
+total_production	DECIMAL(10,2)	Computed production quantity	Null
+computed_at	TIMESTAMP	Date and time the summary was computed	Default CURRENT_TIMESTAMP
+
+Table 17
+Fisheries_Statistics
+This table stores descriptive fisheries summaries computed by the server-side statistics function for monthly, quarterly, or yearly periods.
+Field Name	Data Type	Description	Constraint
+stat_id	BIGINT	Unique identifier of the statistical record	Primary Key, Identity
+subsector	ENUM	Marine or inland municipal fisheries subsector	Not Null
+species_name	VARCHAR(100)	Species represented by the summary	Not Null
+period_type	ENUM	MONTHLY, QUARTERLY, or YEARLY	Not Null
+period_start	DATE	Start date of the period	Not Null
+period_end	DATE	End date of the period	Not Null
+total_catch	DECIMAL(10,2)	Computed catch quantity	Null
+catch_records	INT	Number of source catch records	Null
+computed_at	TIMESTAMP	Date and time the summary was computed	Default CURRENT_TIMESTAMP
+	________________
+
+
+Use Case Diagram
+Figure 8
+Use case diagram for OMA staff / encoder and Municipal Agriculturalist 
+  
+
+
+
+
+
+
+
+
+
+Use Case Description
+The following tables present the use case descriptions for the AGRODATA. Each table defines the actor, use case name, description, preconditions, main flow of events, and postconditions for each identified use case in the system.
+Table 1
+Use Case Description for Login / Authenticate
+Actor
+	OMA Staff, Municipal Agriculturalist
+	Use case name
+	Login 
+	Description
+	This use case enables the OMA Staff and Municipal Agriculturalist to authenticate and gain authorized access to the AGRODATA system by supplying valid credentials. The login mechanism ensures that only registered and authorized personnel can interact with the system modules.
+	Preconditions
+	1. The AGRODATA system is operational and accessible.
+2. The OMA Staff and Municipal Agriculturalist has a registered account with valid credentials.
+3. The user has a stable internet or network connection. 
+	Main Flow
+	1. The OMA Staff and Municipal Agriculturalist navigates to the AGRODATA login page.
+2. The system presents the login form requesting a username and password.
+3. The staff member enters their registered username and password.
+4. The system validates the submitted credentials against the user database.
+5. Upon successful validation, the system grants access to the user.
+6. The system logs the login event with a timestamp for auditing purposes.
+	Alternative Flow
+	AF-1: Invalid Credentials
+  a. The system detects an incorrect username or password.
+  b. An error message is displayed indicating invalid credentials.
+  c. The staff member is prompted to re-enter their credentials.
+  d. After three consecutive failed attempts, the account is temporarily locked and the staff member is notified.
+AF-2: Forgot Password
+  a. The staff member selects the 'Forgot Password' option.
+  b. The system prompts the user to enter their registered email address.
+  c. A password reset link is sent to the provided email.
+  d. The user follows the link to set a new password.
+	Postconditions
+	1. The OMA Staff and Municipal Agriculturalist is successfully authenticated and granted access to the system.
+2. The session is initialized with the staff member's role-based permissions.
+3. A login event is recorded in the system audit log.
+	
+
+Table 2
+Use Case Description for Register Farmer Profile
+Actor
+	OMA Staff
+	Use Case Name
+	Register Farmer Profile
+	Description
+	This use case allows the OMA Staff to create and register a new agricultural producer profile within AGRODATA. The profile is the foundational identity to which farm and crop, livestock and poultry, fisherfolk and fish catch, and aquaculture records may be associated. A person who participates in several sectors retains one profile. Producers do not directly access the system; all registration is performed by authorized OMA Staff.
+	Preconditions
+	1. The OMA Staff member is logged into the system with an active session.
+2. The agricultural producer to be registered does not already have an existing Farmers profile.
+3. The required identity, contact, address, barangay, and registration information has been collected and verified by the OMA Staff.
+	Main Flow
+	1. The OMA Staff navigates to the Farmer Profile Registration module.
+2. The system displays the farmer registration form.
+3. The staff member inputs the required producer information, including full name, sex, birthdate, contact number, address, barangay, and other verified registration data.
+4. The system performs real-time validation of the entered data (e.g., format checks, required field verification).
+5. The staff member reviews the entered information and submits the form.
+6. The system generates a unique farmer identification number and saves the profile to the database.
+7. The system confirms successful registration with a confirmation message.
+	Alternative flow
+	AF-1: Duplicate Record Detected
+  a. The system detects an existing record with matching identifying information.
+  b. A warning is displayed alerting the staff member of a potential duplicate.
+  c. The staff member may review the existing record or proceed to register a new profile with clarified information.
+AF-2: Incomplete Submission
+  a. The staff member attempts to submit the form with missing required fields.
+  b. The system highlights the unfilled fields and displays a validation error.
+  c. The staff member completes the missing fields and resubmits.
+	Postconditions
+	1. A new farmer profile is successfully created and stored in the AGRODATA database.
+2. The farmer's profile is assigned a unique identifier and is available for record linkage.
+3. The registration action is recorded in the system audit trail.
+	
+
+
+
+
+
+
+
+
+
+
+
+Table 3
+Use Case Description for Manage Land Use Records
+Actor
+	OMA Staff 
+	Use Case Name
+	Manage Land Use Records
+	Description
+	This use case enables the OMA Staff to create, view, update, and archive land use records associated with registered farmer profiles. Land use records document the agricultural land parcels, their classifications, ownership or tenancy status, area dimensions, and current land utilization within the municipality.
+	Preconditions
+	1. The OMA Staff member is logged into the system with an active session.
+2. The relevant farmer profile to which land records will be linked must already exist in the system.
+3. The land use data to be entered has been verified through field assessment or official documentation.
+	Main Flow
+	1. The OMA Staff navigates to the Land Use Records module.
+2. The system displays a list of existing land use records and provides options to add, update, or archive records.
+3. To add a new record, the staff member selects 'Add New Land Use Record' and enters the required information, including parcel ID, land classification, area (in hectares), location (barangay), current crop/use, and the linked farmer profile.
+4. The system validates the entered data for completeness and accuracy.
+5. The staff member confirms and submits the record.
+6. The system saves the new or updated land use record and links it to the appropriate farmer profile.
+7. A success message is displayed upon completion.
+	Alternative flow
+	AF-1: Editing an Existing Record
+  a. The staff member searches for and selects an existing land use record.
+  b. The system loads the record in editable mode.
+  c. The staff member modifies the necessary fields and submits the changes.
+  d. The system saves the updated record with a modification timestamp.
+AF-2: Archiving a Record
+  a. The staff member selects a record to be archived (e.g., land no longer active).
+  b. The system prompts for confirmation.
+  c. Upon confirmation, the record is marked as archived and removed from the active list while retained in the database.
+	Postconditions
+	1. Land use records are accurately created, updated, or archived in the database.
+2. All changes are time-stamped and linked to the responsible staff member.
+3. The farmer's profile reflects updated land use information.
+	
+
+Table 4
+Use Case Description for Encode Crops Produced Data
+Actor
+	OMA Staff 
+	Use Case Name
+	Encode Crops Produced Data
+	Description
+	This use case allows the OMA Staff to encode and record agricultural crops produced data for individual farmer profiles in the AGRODATA system. The data encompasses planting schedules, crop types, area planted, yield volumes, and other relevant produced metrics used for agricultural planning and analysis.
+	Preconditions
+	1. The OMA Staff member is logged into the system with an active session.
+2. The farmer profile and associated land use record to which the crop data will be linked must exist in the system.
+3. The crop produced data to be encoded has been collected from field activities, surveys, or official reporting forms.
+	Main Flow
+	1. The OMA Staff navigates to the Crop Produced Data Encoding module.
+2. The system displays an encoding form with relevant fields.
+3. The staff member selects the target farmer profile and associated land parcel.
+4. The staff member encodes the crop produced data, including crop type, variety, planting date, harvesting date, area planted (in hectares), and total yield (in metric tons or applicable unit).
+5. The system performs data validation to ensure completeness and value range integrity.
+6. The staff member reviews the encoded data and submits the entry.
+7. The system stores the crop produced record in the database and links it to the corresponding farmer profile and land record.
+8. A confirmation message is displayed upon successful encoding.
+	Alternative flow
+	AF-1: Data Validation Failure
+  a. One or more fields contain invalid data (e.g., yield value out of acceptable range).
+  b. The system highlights the problematic fields and displays descriptive error messages.
+  c. The staff member corrects the errors and resubmits.
+AF-2: Editing a Previously Encoded Record
+  a. The staff member retrieves an existing crop produced record.
+  b. The system loads the record in an editable view.
+  c. The staff member updates the relevant fields and saves changes.
+  d. The system records the modification with an updated timestamp.
+	Postconditions
+	1. Crop produced data is successfully encoded and stored in the AGRODATA database.
+2. The record is associated with the relevant farmer profile and land parcel.
+3. The encoded data is made available for reporting.
+
+Table 4A
+Use Case Description for Manage Livestock and Poultry Records
+Actor
+	OMA Staff
+	Use Case Name
+	Manage Livestock and Poultry Records
+	Description
+	This use case allows the OMA Staff to maintain animal species references and encode dated livestock and poultry inventory and production records linked to an existing agricultural producer. The record includes barangay, species, inventory count, births or hatches, deaths, dispositions, and optional production quantity and unit.
+	Preconditions
+	1. The OMA Staff member is authenticated.
+2. The agricultural producer and animal species exist in the system.
+3. The source inventory or production information has been verified.
+	Main Flow
+	1. The staff member opens the Livestock and Poultry module.
+2. The system displays species and existing records with search and pagination.
+3. The staff member selects a producer and species and enters the reference date, barangay, inventory and event counts, and optional production information.
+4. The system validates required fields and prevents negative counts or quantities.
+5. The staff member submits the record.
+6. The system stores the record and makes it available to livestock summaries and reports.
+	Alternative Flow
+	AF-1: Invalid Quantity or Missing Reference
+  a. The system identifies an invalid quantity or missing producer or species.
+  b. The affected field is highlighted and the record is not saved.
+  c. The staff member corrects the information and resubmits.
+	Postconditions
+	1. A valid livestock or poultry record is stored and linked to the producer and species.
+2. The record is available for descriptive statistics and the Livestock and Poultry Inventory Report.
+
+Table 4B
+Use Case Description for Register Fisherfolk and Encode Fish Catch
+Actor
+	OMA Staff
+	Use Case Name
+	Register Fisherfolk and Encode Fish Catch
+	Description
+	This use case enables the OMA Staff to attach a fisherfolk activity profile to an existing agricultural producer and encode municipal catch records by date, fisheries subsector, species, quantity, and unit.
+	Preconditions
+	1. The OMA Staff member is authenticated.
+2. The unified producer profile exists.
+3. The fisherfolk and catch information has been verified from the available source record.
+	Main Flow
+	1. The staff member opens the Fisherfolk module and searches for the producer.
+2. The staff member records barangay, involvement, and optional vessel and gear references.
+3. The system checks that the producer does not already have a duplicate fisherfolk profile.
+4. The staff member opens Fish Catch and enters the catch date, marine or inland municipal subsector, species, quantity, unit, and notes.
+5. The system validates the required references and non-negative quantity.
+6. The system stores the fisherfolk and catch records and makes them available for fisheries summaries and reports.
+	Alternative Flow
+	AF-1: Duplicate Fisherfolk Profile or Invalid Catch
+  a. The system identifies an existing profile or invalid catch information.
+  b. The system displays a validation message and does not create the duplicate or invalid record.
+  c. The staff member reviews the existing profile or corrects the catch entry.
+	Postconditions
+	1. The fisherfolk profile is linked to one producer identity.
+2. Valid catch records are available for search, descriptive statistics, and the Municipal Fisheries Catch Report.
+
+Table 4C
+Use Case Description for Manage Aquaculture Sites and Cycles
+Actor
+	OMA Staff
+	Use Case Name
+	Manage Aquaculture Sites and Cycles
+	Description
+	This use case allows the OMA Staff to register an aquaculture site for an agricultural producer and maintain a species culture cycle from stocking to harvest or recorded loss.
+	Preconditions
+	1. The OMA Staff member is authenticated.
+2. The producer profile exists.
+3. The site and culture-cycle information has been verified.
+	Main Flow
+	1. The staff member opens the Aquaculture Sites module and records the site name, barangay, site type, water environment, and optional area.
+2. The system validates the site information and links it to the producer.
+3. The staff member creates a culture cycle by selecting the site and entering the species, stocking date and quantity, unit, and initial status.
+4. When the cycle is completed, the staff member records the harvest date and quantity and changes the status to harvested, or records the cycle as lost when applicable.
+5. The system ensures that quantities are non-negative and that the harvest date does not precede the stocking date.
+6. The system stores the site and cycle records and updates the aquaculture indicators.
+	Alternative Flow
+	AF-1: Inconsistent Harvest Information
+  a. The harvest date is earlier than the stocking date or a quantity is negative.
+  b. The system rejects the entry and identifies the invalid field.
+  c. The staff member corrects the information and resubmits.
+	Postconditions
+	1. The aquaculture site is linked to the producer.
+2. A valid stocking-to-harvest cycle is stored and available for monitoring and dashboard totals.
+	
+
+
+
+
+
+
+
+
+
+Table 5
+ Use Case Description for Search & Filter Records
+Actor
+	OMA Staff 
+	Use Case Name
+	Search & Filter Records
+	Description
+	This use case enables the OMA Staff to query the AGRODATA database using search parameters and filters to locate agricultural producer profiles; farm, crop, livestock and poultry, fisherfolk, fish catch, and aquaculture records. The feature supports efficient retrieval without browsing the entire dataset.
+	Preconditions
+	1. The OMA Staff member is logged into the system with an active session.
+2. Records must already exist in the database for search results to be returned.
+	Main Flow
+	1. The OMA Staff navigates to the Search & Filter module or accesses it through a relevant record view.
+2. The system displays a search interface with configurable filter parameters appropriate to the selected module, such as producer name, barangay, crop or animal species, fisheries subsector, aquaculture status, and date range.
+3. The staff member enters one or more search criteria and initiates the query.
+4. The system processes the query and retrieves matching records from the database.
+5. The system displays the results in a tabular format, showing key data fields for each matched record.
+6. The staff member may further refine the search by adjusting filter parameters.
+7. The staff member selects a record for detailed viewing or further action.
+	Alternative flow
+	AF-1: No Records Found
+  a. The search query returns no matching records.
+  b. The system displays an informational message indicating no results were found.
+  c. The staff member may modify the search criteria and re-run the query.
+AF-2: Too Many Results
+  a. The query returns an excessively large number of records.
+  b. The system paginates results and prompts the staff member to apply additional filters.
+	Postconditions
+	1. The relevant records are retrieved and displayed to the OMA Staff member.
+2. No modifications are made to the database as a result of this use case.
+3. The staff member may proceed to view, update, or export the retrieved records.
+	
+
+Table 6
+Use Case Description for View & Update Records
+Actor
+	OMA Staff
+	Use Case Name
+	View & Update Records
+	Description
+	This use case allows the OMA Staff to view existing records in AGRODATA and make authorized corrections or updates. This covers agricultural producer profiles; farm and crop records; livestock and poultry records; fisherfolk and fish catch records; and aquaculture sites and cycles, ensuring data accuracy and currency throughout the system.
+	Preconditions
+	1. The OMA Staff member is logged into the system with an active session.
+2. The target record to be viewed or updated exists in the database.
+3. The staff member has the necessary permissions to modify records.
+	Main Flow
+	1. The OMA Staff locates the target record through the Search & Filter module or direct navigation.
+2. The system displays the full details of the selected record in a read-only view.
+3. The staff member reviews the record for accuracy.
+4. If an update is required, the staff member selects 'Edit' or 'Update'.
+5. The system transitions the record to an editable state.
+6. The staff member modifies the necessary fields.
+7. The system validates the updated data for completeness and integrity.
+8. The staff member confirms and saves the changes.
+9. The system updates the record in the database, recording the modification timestamp and the responsible staff member's identity.
+	Alternative flow
+	AF-1: Unauthorized Modification Attempt
+  a. The staff member attempts to edit a record beyond their access level.
+  b. The system denies the action and displays an access restriction message.
+AF-2: Concurrent Edit Conflict
+  a. Another user has modified the same record simultaneously.
+  b. The system alerts the current user of a conflict and presents the latest version for review.
+	Postconditions
+	1. The selected record is successfully updated with the correct information.
+2. A modification log entry is created, capturing the change details, timestamp, and editor identity.
+3. The updated record is immediately reflected in all relevant views and reports.
+	
+
+Table 7
+Use Case Description for Manage User Accounts
+ Actor
+	OMA Staff
+	Use Case Name
+	Manage User Accounts
+	Description
+	This use case allows the OMA Staff to administer user accounts within the AGRODATA system, including the creation of new accounts, updating user information, assignment of roles and access levels, deactivation, and deletion of accounts. This function ensures proper access control and system security.
+	Preconditions
+	1. The OMA Staff member is logged into the system with an active session and has administrative privileges for user management.
+2. Relevant user information (name, role, contact details) is available prior to account creation.
+	Main Flow
+	1. The OMA Staff navigates to the User Account Management module.
+2. The system displays a list of existing user accounts with their respective roles and statuses.
+3. To create a new account, the staff member selects 'Add User' and fills in the required information: full name, username, email, role assignment (e.g., OMA Staff, Municipal Agriculturalist), and initial password.
+4. The system validates the input data and checks for duplicate usernames.
+5. The staff member confirms and saves the new account.
+6. The system creates the account and sends an account activation notification to the user.
+7. To modify an account, the staff member selects an existing user, makes the necessary changes (role, contact info, status), and saves.
+	Alternative flow
+	AF-1: Duplicate Username
+  a. The entered username already exists in the system.
+  b. The system displays an error and prompts the staff member to choose a different username.
+AF-2: Deactivating an Account
+  a. The staff member selects an active account and chooses 'Deactivate'.
+  b. The system prompts for confirmation.
+  c. Upon confirmation, the account is deactivated and the affected user loses system access.
+	Postconditions
+	1. User accounts are created, updated, or deactivated as intended.
+2. Role assignments and permissions are accurately reflected in the system.
+3. All account management actions are recorded in the audit log.
+	
+
+Table 8
+Use Case Description for Backup and Restore Database
+Actor
+	OMA Staff
+	Use Case Name
+	Backup and Restore Database
+	Description
+	This use case enables the OMA Staff to initiate database backup operations to safeguard the integrity and availability of AGRODATA system data, and to restore the database from a backup file in the event of data loss, corruption, or system failure.
+	Preconditions
+	1. The OMA Staff member is logged into the system with an active session and holds the necessary privileges to perform backup or restore operations.
+2. For database restoration, a valid and compatible backup file must be available.
+3. The system has sufficient storage capacity for the backup file.
+	Main Flow
+	1. The OMA Staff navigates to the Database Backup and Restore module.
+2. The system displays backup options: 'Create Backup' and 'Restore from Backup'.
+3. To create a backup:
+   a. The staff member selects 'Create Backup'.
+   b. The system initiates the backup process, exporting all database records to a designated backup file.
+   c. The system confirms successful completion and displays the backup file's metadata.
+4. To restore from a backup:
+   a. The staff member selects 'Restore from Backup' and uploads or selects the target backup file.
+   b. The system validates the backup file for compatibility and integrity.
+   c. The staff member confirms the restore operation.
+   d. The system executes the restoration process, overwriting current data with the backup version.
+   e. The system confirms successful restoration.
+	Alternative flow
+	AF-1: Backup Process Failure
+  a. The backup process encounters an error (e.g., insufficient storage, database error).
+  b. The system displays an error message specifying the cause of failure.
+  c. The backup is not created; no changes are made to the database.
+AF-2: Invalid Backup File
+  a. The uploaded restoration file is corrupt or incompatible with the current system version.
+  b. The system rejects the file and displays a descriptive error message.
+  c. The staff member is prompted to provide a valid backup file.
+	Postconditions
+	1. A database backup is successfully created and stored, or the database is successfully restored from a backup.
+2. The backup or restore action is logged with the timestamp and the responsible staff member's identity.
+3. System data integrity is maintained.
+	
+
+Table 9
+Use case description for Search & Filter Records
+Actor
+	Municipal Agriculturalist 
+	Use Case Name
+	Search & Filter Records
+	Description
+	This use case enables the Municipal Agriculturalist to query AGRODATA using cross-sector search parameters and filters to retrieve agricultural producer, crop, livestock and poultry, fisheries, and aquaculture records for review, descriptive analysis, and report generation.
+	Preconditions
+	1. The Municipal Agriculturalist is logged into the system with an active session.
+2. Records relevant to the search query exist within the database.
+	Main Flow
+	1. The Municipal Agriculturalist accesses the Search & Filter module.
+2. The system presents a search interface with parameters applicable to the selected sector, including producer name, barangay, crop or animal species, fisheries subsector, season or period, aquaculture status, and date range.
+3. The user specifies one or more search criteria and submits the query.
+4. The system processes the query and returns matching records.
+5. Results are displayed in a structured tabular format with key data fields.
+6. The Agriculturalist may refine the search with additional filters.
+7. The user selects a record for detailed viewing or further processing.
+	Alternative flow
+	AF-1: No Records Found
+  a. The search returns no matching results.
+  b. The system displays an informational message and suggests broadening the search criteria.
+AF-2: Large Result Set
+  a. The query yields an extensive number of records.
+  b. The system paginates the results and advises additional filter application.
+	Postconditions
+	1. Matching records are retrieved and presented to the Municipal Agriculturalist.
+2. No modifications are applied to the database.
+3. The user may proceed to generate reports or conduct further analysis on the retrieved records.
+	
+
+
+
+
+
+
+
+Table 10
+Use Case Description for Generate Agricultural Produced Report
+Actor
+	Municipal Agriculturalist
+	Use Case Name
+	Generate Agricultural Produced Report
+	Description
+	This use case enables the Municipal Agriculturalist to generate formal reports from records stored in AGRODATA. The implemented report types are the Quarterly Crop Production Report, Seasonal Farm Inventory Report, Annual Municipal Agriculture Summary, Farmer Registry, Livestock and Poultry Inventory Report, and Municipal Fisheries Catch Report. Authenticated server-side functions compile the selected crop, farm, producer, animal inventory, or fish catch records and return structured report data for preview, PDF, Excel, CSV, or printing. Report formats intended for external submission must be confirmed by the OMA and the receiving office before being described as officially compliant.
+	Preconditions
+	1. The Municipal Agriculturalist is logged into the system with an active session.
+2. Sufficient source data for the selected crop, farm, producer, livestock and poultry, or fisheries report are available in the database.
+3. The report Edge Function and data export functionality are operational.
+	Main Flow
+	1. The Municipal Agriculturalist navigates to the Report Generation module.
+2. The system displays the report type, required period controls, optional filters, signatories, and output format. Quarterly crop reports use a year and quarter; seasonal farm inventory uses a year and wet or dry season; annual summaries use a year; and livestock, fisheries, and farmer registry reports use the applicable date or registry parameters.
+3. The user specifies the desired parameters and initiates report generation.
+4. The system invokes the authenticated report Edge Function, which queries and aggregates the relevant PostgreSQL records.
+5. The function returns the report title, period, columns, rows, totals, and metadata for the selected report type.
+6. A preview of the report is displayed to the user for review.
+7. The Agriculturalist confirms the report and selects to download, print, or save it within the system.
+8. The system generates the output file and confirms its availability.
+	Alternative flow
+	AF-1: Insufficient Data for Report
+  a. The selected parameters return an insufficient dataset for a meaningful report.
+  b. The system displays a notification recommending parameter adjustment.
+AF-2: Generation Failure
+  a. The report generation process encounters a system error.
+  b. The system displays an error message and logs the event.
+  c. The user may attempt regeneration or contact the system administrator.
+	Postconditions
+	1. The selected agricultural report is successfully generated from current database records and made available for review, download, or printing.
+2. The report is optionally saved within the system for future reference.
+3. The report generation activity is captured in the system audit log.
+	
+
+Table 11
+Use Case Description for Manage User Accounts
+Actor
+	 Municipal Agriculturalist
+	Use Case Name
+	Manage User Accounts
+	Description
+	This use case allows the Municipal Agriculturalist to oversee and manage system user accounts within the AGRODATA Agriculturalist Module. This includes the creation, modification, role assignment, deactivation, and deletion of user accounts, ensuring that system access is appropriately governed.
+	Preconditions
+	1. The Municipal Agriculturalist is logged into the system with an active session and holds administrative privileges.
+2. Relevant user information is prepared prior to account creation or modification.
+	Main Flow
+	1. The Municipal Agriculturalist navigates to the User Account Management module.
+2. The system displays a list of registered users along with their roles and account statuses.
+3. To add a new user, the Agriculturalist selects 'Add New User' and completes the registration form, including full name, username, designated role, email address, and initial password.
+4. The system validates the input and checks for duplicate usernames or email addresses.
+5. The Agriculturalist saves the new account.
+6. The system creates the account and dispatches an activation notification to the new user.
+7. Existing accounts may be edited, role-adjusted, or deactivated by selecting the target account and applying changes.
+	Alternative flow
+	AF-1: Duplicate Account
+  a. A matching username or email already exists in the system.
+  b. An error message is displayed, prompting the use of unique credentials.
+AF-2: Deactivating an Account
+  a. The Agriculturalist selects an active account for deactivation.
+  b. The system requests confirmation.
+  c. Upon confirmation, the account is deactivated and the user's access is revoked.
+	Postconditions
+	1. User accounts are successfully created, updated, or deactivated.
+2. Role assignments and access permissions are accurately applied.
+3. All account management activities are logged in the system audit trail.
+	
+
+
+
+
+
+Table 12
+Use Case Description for Backup & Restore Database
+Actor
+	Municipal Agriculturalist 
+	Use Case Name
+	Backup & Restore Database
+	Description
+	This use case enables the Municipal Agriculturalist to perform database backup and restoration operations within the AGRODATA system to ensure data continuity and recovery capability. The Municipal Agriculturalist may initiate backups to preserve system data and restore from previously saved backups in cases of data loss or system failure.
+	Preconditions
+	1. The Municipal Agriculturalist is logged into the system with an active session and possesses the required administrative privileges.
+2. For restoration, a valid and verified backup file must be available.
+3. The system has sufficient storage for backup operations.
+	Main Flow
+	1. The Municipal Agriculturalist navigates to the Database Backup and Restore module.
+2. The system presents two options: 'Create Backup' and 'Restore from Backup'.
+3. To create a backup:
+   a. The Agriculturalist initiates the backup process.
+   b. The system exports and compiles all current database records into a backup file.
+   c. The system confirms successful completion and displays backup file details.
+4. To restore from backup:
+   a. The Agriculturalist uploads or selects a backup file.
+   b. The system verifies file integrity and compatibility.
+   c. The Agriculturalist confirms the restoration.
+   d. The system replaces current data with the backup version.
+   e. A success message is displayed upon completion.
+	Alternative flow
+	AF-1: Backup Failure
+  a. The backup process fails due to storage limitations or system error.
+  b. The system displays a failure notice with the cause of error.
+  c. No backup is saved.
+AF-2: Incompatible Backup File
+  a. The selected restoration file is incompatible with the current system version.
+  b. The system rejects the file and notifies the user.
+  c. The user provides a compatible backup file.
+	Postconditions
+	1. A database backup is successfully created or the database is restored from a previous backup.
+2. Data integrity is maintained after the operation.
+3. The backup or restoration action is logged with the event timestamp and responsible user identity.
+	
+
+Table 13
+Use Case Description for Audit Logs & System Monitoring
+Actor
+	Municipal Agriculturalist
+	Use Case Name
+	Audit Logs & System Monitoring
+	Description
+	This use case enables the Municipal Agriculturalist to access and review the system's audit logs and monitoring reports. Audit logs provide a chronological record of all user activities, data modifications, and system events within the AGRODATA system, supporting accountability, data integrity verification, and security oversight.
+	Preconditions
+	1. The Municipal Agriculturalist is logged into the system with an active session and has access privileges to the audit log module.
+2. The system's audit logging mechanism is active and has captured events.
+	Main Flow
+	1. The Municipal Agriculturalist navigates to the Audit Logs and System Monitoring module.
+2. The system retrieves and displays a chronological list of system events and user activity logs.
+3. Each log entry includes the event type, timestamp, affected record or module, and the user responsible for the action.
+4. The Agriculturalist may apply filters such as date range, user, action type, or module to narrow the log view.
+5. The system updates the displayed logs in accordance with the applied filters.
+6. The Agriculturalist reviews the log entries for compliance verification, anomaly detection, or investigative purposes.
+7. The Agriculturalist may export the audit log for external reporting or archiving.
+	Alternative flow
+	AF-1: No Log Entries Found
+  a. No log entries match the specified filter criteria.
+  b. The system displays a message indicating no records were found for the selected parameters.
+  c. The user may adjust the filters and retry.
+	Postconditions
+	1. The Municipal Agriculturalist has successfully reviewed system audit logs and monitoring data.
+2. No modifications are made to the audit log records.
+3. Exported log files, if requested, are made available.
+4. The log viewing session is itself recorded as an audit event.
+	
+
+Table 14
+Use Case Description for Logout
+Actor
+	Oma staff, Municipal Agriculturalist
+	Use Case Name
+	Logout
+	Description
+	This use case allows the Municipal Agriculturalist to securely terminate their active session within the AGRODATA system. The logout process ensures data security by invalidating the session and preventing unauthorized continued access.
+	Preconditions
+	The Oma Staff and Municipal Agriculturalist has an active, authenticated session in the AGRODATA system.
+	Main Flow
+	1. The Oma Staff and Municipal Agriculturalist selects the 'Logout' option from the system navigation.
+2. The system requests confirmation of the logout action.
+3. The user confirms the logout.
+4. The system invalidates the active session token and clears all session data.
+5. The logout event is recorded in the system audit log with a timestamp.
+6. The system redirects the user to the AGRODATA login page.
+	Alternative flow
+	AF-1: Session Timeout
+  a. The Agriculturalist remains idle beyond the system-defined timeout threshold.
+  b. The system automatically terminates the session.
+  c. The user is redirected to the login page with a session expiry notification.
+	Postconditions
+	1. The Municipal Agriculturalist's session is securely terminated.
+2. Session data is cleared from the client interface.
+3. The logout event is recorded in the audit log.
+4. The system is secured against unauthorized access via the terminated session.
+	Sequence Diagram.        
+________________
+
+
+Figure 9
+Sequence Diagram for OMA Staff (Integrated Crop, Livestock and Poultry, Fisheries, and Aquaculture Data Encoding and Records Management)
+  
+
+________________
+
+
+Figure 10
+Sequence Diagram for Municipal Agriculturalist (Crop, Livestock and Poultry, and Fisheries Report Generation)
+  
+
+
+
+________________
+
+
+Figure 11
+Activity Diagram for OMA Staff – Integrated Agricultural Data Encoding and Records Management
+  
+
+________________
+
+
+Figure 12
+Activity Diagram for Municipal Agriculturalist – Sector and Consolidated Report Generation
+  
+
+
+
+
+
+REFERENCES
+Basir, M. S., Buckmaster, D., Raturi, A., & Zhang, Y. (2024). From pen and paper to digital precision: A comprehensive review of on-farm recordkeeping. Precision Agriculture, 25(5), 2643–2682. https://doi.org/10.1007/s11119-024-10172-7
+Batoon, J., Raymundo, E., Cruz, R. J., & Custodio, E. B. (2023). Sakahanda: A farming management system designed for small-scale crop productions in the Municipality of San Ildefonso. Research Square. https://doi.org/10.21203/rs.3.rs-3026635/v1
+Davis, F. D., & Granić, A. (2024). The technology acceptance model: 30 years of TAM. Springer. https://doi.org/10.1007/978-3-030-45274-2
+Dela Cruz, M., Santos, J., & Reyes, A. (2021). Development of an agricultural management information system for a municipality in Nueva Ecija. Journal of Computing and Information Technology, 8(1), 12–28.
+Garcia Juan, J. (2026). A socio-technical systems analysis of small-scale quail farming: Innovation barriers and readiness for agri-enterprise growth. Research on World Agricultural Economy, 7(1), 173–194. https://doi.org/10.36956/rwae.v7i1.245
+Gonzales, P., Macaraeg, R., & Tan, L. (2022). Web-based agricultural production monitoring system for a provincial agriculture office in Mindanao. Asian Journal of Information Technology, 21(3), 78–95.
+Htun, N. N., Krauss, C., Lindow, N., Kausch, L., Hoinkis, D., Bernhard, K., & Rückelshausen, A. (2022). Developing visual-assisted decision support systems across diverse agricultural use cases. ResearchGate. https://www.researchgate.net/publication/367604776_Developing_Visual-Assisted_Decision_Support_Systems_across_Diverse_Agricultural_Use_Cases
+Koldovskyi, A., Hordiienko, V., Yurynets, O., Abu Khalaf, B., & Ktit, M. (2025). Technology adoption in government management: Public sector transformation analysis. Journal of Governance & Regulation, 14(1), 150–160. https://doi.org/10.22495/jgrv14i1art14 
+Kumar, A., Singh, S. R., Yadav, M. C., Bhuj, B. D., Dhar, S., Singh, Y. P., Kumar, R., Yadav, V., Rizwan, M., Singh Thapa, R., Kumar, V., Mishra, B. K., Kumar, V., Rajput, A., Singh, A., & Kumar, P. (2023). Information and communication technologies (ICTs) in agriculture: A review. International Journal of Current Microbiology and Applied Sciences, 12(2), 17–50. https://doi.org/10.20546/ijcmas.2023.1202.003
+Laudon, K. C., & Laudon, J. P. (2020). Management information systems: Managing the digital firm (16th ed.). Pearson.
+McKenney, S., & Reeves, T. C. (2021). Conducting educational design research (2nd ed.). Routledge.
+Bureau of Fisheries and Aquatic Resources. (n.d.). Philippine Fisheries and Coastal Resiliency (FishCoRe) Project. https://fishcore.bfar.da.gov.ph/
+Food and Agriculture Organization of the United Nations. (n.d.-a). Integration of fish with crop and livestock farming. https://www.fao.org/3/x7156e/x7156e02.htm
+Food and Agriculture Organization of the United Nations. (n.d.-b). Management for freshwater fish culture. https://www.fao.org/fishery/static/FAO_Training/FAO_Training/General/x6709e/x6709e16.htm
+Philippine Statistics Authority. (2023). Crop statistics of the Philippines. Philippine Statistics Authority.
+Philippine Statistics Authority. (2025). Technical notes on livestock and poultry statistics of the Philippines, 2021–2025. https://psa.gov.ph/content/technical-notes-livestock-and-poultry-statistics-philippines-2021-2025
+Philippine Statistics Authority. (n.d.-a). Philippine Food Security Information System. https://openstat.psa.gov.ph/Featured/philfsis
+Philippine Statistics Authority. (n.d.-b). Agriculture, forestry and fisheries database. https://openstat.psa.gov.ph/Database/Agriculture-Forestry-Fisheries
+Radhakrishnan, G. V. (2025). E-government initiatives: A case study of ICT in public service delivery. ResearchGate. https://www.researchgate.net/publication/394772411_E-GOVERNMENT_INITIATIVES_A_CASE_STUDY_OF_ICT_IN_PUBLIC_SERVICE_DELIVERY
+Republic Act No. 7160. (1991). The Local Government Code of the Philippines. https://www.officialgazette.gov.ph/1991/10/10/republic-act-no-7160/
+Republic Act No. 8792. (2000). Electronic Commerce Act of 2000. https://www.officialgazette.gov.ph/2000/06/14/republic-act-no-8792/
+Republic Act No. 10173. (2012). Data Privacy Act of 2012. https://www.officialgazette.gov.ph/2012/08/15/republic-act-no-10173/
+Wolfert, S., Verdouw, C., van Wassenaer, L., Dolfsma, W., & Klerkx, L. (2023). Digital innovation ecosystems in agri-food: Design principles and organizational framework. Agricultural Systems, 204, 103558. https://doi.org/10.1016/j.agsy.2022.103558
+Zhang, L., Wang, H., & Liu, Y. (2020). Cloud-based agricultural data management systems in China: A case study. Computers and Electronics in Agriculture, 178, 105734. https://doi.org/10.1016/j.compag.2020.105734

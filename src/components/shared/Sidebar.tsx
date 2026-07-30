@@ -1,3 +1,4 @@
+import * as React from "react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Logo } from "./Logo";
@@ -7,13 +8,24 @@ import { navSections } from "./nav";
 interface SidebarProps {
   onNavigate?: () => void;
   collapsed?: boolean;
+  /** Moves focus into the nav when opened as a mobile drawer. */
+  autoFocus?: boolean;
 }
 
-export function Sidebar({ onNavigate, collapsed = false }: SidebarProps) {
+export function Sidebar({ onNavigate, collapsed = false, autoFocus = false }: SidebarProps) {
   const { isAdmin } = useAuth();
+  const navRef = React.useRef<HTMLElement>(null);
+
+  React.useEffect(() => {
+    if (!autoFocus) return;
+    // Focus the first link so keyboard and screen-reader users land inside the
+    // drawer instead of staying behind it.
+    navRef.current?.querySelector<HTMLAnchorElement>("a")?.focus();
+  }, [autoFocus]);
 
   return (
     <aside
+      aria-label="Main navigation"
       className={cn(
         "flex h-full flex-col overflow-hidden border-r transition-[width] duration-300 ease-in-out",
         "bg-gradient-to-b from-emerald-50 via-emerald-100 to-emerald-200 dark:from-emerald-950 dark:via-emerald-900 dark:to-emerald-950",
@@ -32,7 +44,7 @@ export function Sidebar({ onNavigate, collapsed = false }: SidebarProps) {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-4">
+      <nav ref={navRef} className="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-4">
         {navSections.map((section, index) => {
           const items = section.items.filter((i) => !i.adminOnly || isAdmin);
           if (items.length === 0) return null;

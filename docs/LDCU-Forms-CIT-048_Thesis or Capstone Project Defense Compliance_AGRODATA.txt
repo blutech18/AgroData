@@ -1,0 +1,39 @@
+Panel Member: DR. JUN BRIAN TUBONGBANUA
+Comments
+1. APA 7 format
+
+Compliance:
+Corrected the manuscript to follow APA 7 format for all citations and references.
+
+─────────────────────────────────────────────────────────────────────────────
+
+Panel Member: MR. EMERALD DY ELNAS
+Comments
+1. The system is too simple, mostly recording data. Add analytics, statistics, and other data-driven benefits.
+
+Compliance:
+Added an analytics module that computes statistical summaries and displays them as dashboards and charts. Forecasting was removed per adviser instruction.
+
+─────────────────────────────────────────────────────────────────────────────
+
+Panel Member: MR. WILFREDO P. KAAMIÑO JR.
+Comments
+1. Define the reports and ensure compliance with the Provincial Agriculture Office.
+2. Refer to the attached video for other comments.
+
+Compliance:
+Defined the compliance reports for the Provincial Agriculture Office and addressed the video comments.
+
+─────────────────────────────────────────────────────────────────────────────
+
+Panel Member: MR. CECILIO P. TONGCO JR.
+Comments
+1. Make the system beneficial enough to be called automation.
+
+Compliance:
+Added automated report generation and statistical computation so the system qualifies as automation.
+
+─────────────────────────────────────────────────────────────────────────────
+
+FIGURES REQUIRING UPDATE:
+Figures 1, 5, 6, 7, and 8 were updated to reflect the analytics features (without forecasting).

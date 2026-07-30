@@ -15,7 +15,7 @@ const features = [
   { icon: Sprout, text: "Farmer profiling and crop yield inventory" },
   { icon: ShieldCheck, text: "Data validation and duplicate prevention" },
   { icon: FileText, text: "Automated municipal & provincial compliance reports" },
-  { icon: LineChart, text: "Analytics dashboard, yield trends, and production forecasts" },
+  { icon: LineChart, text: "Analytics dashboard, statistical summaries, and yield trends" },
 ];
 
 const stack = ["React + Vite", "TypeScript", "Tailwind CSS", "Supabase / PostgreSQL"];

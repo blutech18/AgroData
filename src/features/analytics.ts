@@ -1,5 +1,10 @@
 import { supabase } from "@/lib/supabase";
-import type { PeriodType, YieldStatistic } from "@/types/database";
+import type {
+  FisheriesStatistic,
+  LivestockStatistic,
+  PeriodType,
+  YieldStatistic,
+} from "@/types/database";
 
 export interface DashboardSummary {
   farmerCount: number;
@@ -8,6 +13,9 @@ export interface DashboardSummary {
   activePlantings: number;
   totalAreaPlanted: number;
   totalYield: number;
+  animalInventory: number;
+  fishCatch: number;
+  aquacultureHarvest: number;
 }
 
 export interface NamedValue {
@@ -19,12 +27,6 @@ export interface YieldTrendPoint {
   period: string; // e.g. "2025"
   yield: number;
   area: number;
-}
-
-export interface ForecastPoint {
-  period: string;
-  actual: number | null;
-  forecast: number | null;
 }
 
 interface PlantingJoin {
@@ -44,7 +46,13 @@ interface HarvestJoin {
   } | null;
 }
 
-async function countRows(table: string, filter?: (q: any) => any): Promise<number> {
+/** The head-count query builder returned by `.select(..., { head: true })`. */
+type CountQuery = ReturnType<ReturnType<typeof supabase.from>["select"]>;
+
+async function countRows(
+  table: string,
+  filter?: (q: CountQuery) => CountQuery
+): Promise<number> {
   let q = supabase.from(table).select("*", { count: "exact", head: true });
   if (filter) q = filter(q);
   const { count, error } = await q;
@@ -62,6 +70,13 @@ export async function fetchDashboardSummary(): Promise<DashboardSummary> {
 
   const { data: plantings } = await supabase.from("planting_records").select("area_planted");
   const { data: harvests } = await supabase.from("harvest_inventory").select("quantity_harvested");
+  const { data: livestock } = await supabase
+    .from("livestock_records")
+    .select("inventory_count");
+  const { data: catches } = await supabase.from("fish_catch").select("quantity");
+  const { data: aquaHarvests } = await supabase
+    .from("aquaculture_cycles")
+    .select("harvest_qty");
 
   const totalAreaPlanted = (plantings ?? []).reduce(
     (sum, p: { area_planted: number }) => sum + Number(p.area_planted ?? 0),
@@ -71,8 +86,67 @@ export async function fetchDashboardSummary(): Promise<DashboardSummary> {
     (sum, h: { quantity_harvested: number }) => sum + Number(h.quantity_harvested ?? 0),
     0
   );
+  const animalInventory = (livestock ?? []).reduce(
+    (sum, l: { inventory_count: number }) => sum + Number(l.inventory_count ?? 0),
+    0
+  );
+  const fishCatch = (catches ?? []).reduce(
+    (sum, c: { quantity: number }) => sum + Number(c.quantity ?? 0),
+    0
+  );
+  const aquacultureHarvest = (aquaHarvests ?? []).reduce(
+    (sum, a: { harvest_qty: number | null }) => sum + Number(a.harvest_qty ?? 0),
+    0
+  );
 
-  return { farmerCount, farmCount, cropCount, activePlantings, totalAreaPlanted, totalYield };
+  return {
+    farmerCount,
+    farmCount,
+    cropCount,
+    activePlantings,
+    totalAreaPlanted,
+    totalYield,
+    animalInventory,
+    fishCatch,
+    aquacultureHarvest,
+  };
+}
+
+/** Livestock/poultry inventory distribution — recorded inventory per species. */
+export async function fetchLivestockBySpecies(): Promise<NamedValue[]> {
+  const { data, error } = await supabase
+    .from("livestock_records")
+    .select("inventory_count, livestock_species(species_name)");
+  if (error) throw error;
+
+  const map = new Map<string, number>();
+  for (const row of (data ?? []) as unknown as {
+    inventory_count: number;
+    livestock_species: { species_name: string } | null;
+  }[]) {
+    const name = row.livestock_species?.species_name ?? "Unknown";
+    map.set(name, (map.get(name) ?? 0) + Number(row.inventory_count ?? 0));
+  }
+  return [...map.entries()]
+    .map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 }))
+    .sort((a, b) => b.value - a.value);
+}
+
+/** Fish catch distribution — total quantity per municipal subsector. */
+export async function fetchFishCatchBySubsector(): Promise<NamedValue[]> {
+  const { data, error } = await supabase.from("fish_catch").select("subsector, quantity");
+  if (error) throw error;
+
+  const label = (s: string) =>
+    s === "MARINE_MUNICIPAL" ? "Marine (municipal)" : "Inland (municipal)";
+  const map = new Map<string, number>();
+  for (const row of (data ?? []) as { subsector: string; quantity: number }[]) {
+    const name = label(row.subsector);
+    map.set(name, (map.get(name) ?? 0) + Number(row.quantity ?? 0));
+  }
+  return [...map.entries()]
+    .map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 }))
+    .sort((a, b) => b.value - a.value);
 }
 
 /** Crop production distribution — total harvested quantity per crop. */
@@ -143,85 +217,11 @@ export async function fetchYieldTrend(): Promise<YieldTrendPoint[]> {
     }));
 }
 
-/**
- * Basic production forecast using linear regression (least squares) over the
- * historical yearly yield series. Projects the next `horizon` periods.
- * The manuscript scopes forecasting to historical data patterns only.
- */
-export function buildForecast(trend: YieldTrendPoint[], horizon = 2): ForecastPoint[] {
-  const points = trend.filter((t) => t.yield > 0);
-  const result: ForecastPoint[] = trend.map((t) => ({
-    period: t.period,
-    actual: t.yield,
-    forecast: null,
-  }));
-
-  if (points.length < 2) return result;
-
-  // x = index, y = yield
-  const xs = points.map((_, i) => i);
-  const ys = points.map((p) => p.yield);
-  const n = xs.length;
-  const sumX = xs.reduce((a, b) => a + b, 0);
-  const sumY = ys.reduce((a, b) => a + b, 0);
-  const sumXY = xs.reduce((a, x, i) => a + x * ys[i], 0);
-  const sumXX = xs.reduce((a, x) => a + x * x, 0);
-  const denom = n * sumXX - sumX * sumX;
-  if (denom === 0) return result;
-
-  const slope = (n * sumXY - sumX * sumY) / denom;
-  const intercept = (sumY - slope * sumX) / n;
-
-  // Connect last actual point to the forecast line.
-  const lastIdx = result.length - 1;
-  result[lastIdx] = { ...result[lastIdx], forecast: result[lastIdx].actual };
-
-  const lastYear = parseInt(points[points.length - 1].period, 10);
-  for (let h = 1; h <= horizon; h++) {
-    const x = n - 1 + h;
-    const predicted = Math.max(0, slope * x + intercept);
-    result.push({
-      period: String(lastYear + h),
-      actual: null,
-      forecast: Math.round(predicted * 100) / 100,
-    });
-  }
-  return result;
-}
-
 // ---------------------------------------------------------------------------
-// Yield_Statistics (Data Dictionary Table 9): compute & persist statistical
-// summaries from planting + harvest data, grouped by crop, barangay, period.
+// Yield_Statistics (Data Dictionary Table 9): read stored summaries, and
+// trigger server-side (Supabase Edge Function) computation that aggregates
+// planting + harvest data by crop, barangay, and period, then persists it.
 // ---------------------------------------------------------------------------
-
-interface StatHarvestJoin {
-  quantity_harvested: number;
-  harvested_at: string;
-  planting_records: {
-    area_planted: number;
-    crop_id: number;
-    farm_plots: { farms: { barangay: string | null; farmer_id: number | null } | null } | null;
-  } | null;
-}
-
-function pad(n: number) {
-  return String(n).padStart(2, "0");
-}
-
-function periodBounds(date: Date, type: PeriodType) {
-  const y = date.getFullYear();
-  const m = date.getMonth(); // 0-11
-  if (type === "YEARLY") {
-    return { start: `${y}-01-01`, end: `${y}-12-31` };
-  }
-  if (type === "QUARTERLY") {
-    const startM = Math.floor(m / 3) * 3;
-    const end = new Date(y, startM + 3, 0);
-    return { start: `${y}-${pad(startM + 1)}-01`, end: `${y}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}` };
-  }
-  const end = new Date(y, m + 1, 0);
-  return { start: `${y}-${pad(m + 1)}-01`, end: `${y}-${pad(m + 1)}-${pad(end.getDate())}` };
-}
 
 export async function fetchYieldStatistics(): Promise<YieldStatistic[]> {
   const { data, error } = await supabase
@@ -233,80 +233,36 @@ export async function fetchYieldStatistics(): Promise<YieldStatistic[]> {
   return (data as YieldStatistic[]) ?? [];
 }
 
+export async function fetchLivestockStatistics(): Promise<LivestockStatistic[]> {
+  const { data, error } = await supabase
+    .from("livestock_statistics")
+    .select("*, livestock_species(species_name, category)")
+    .order("period_start", { ascending: false })
+    .order("species_id", { ascending: true });
+  if (error) throw error;
+  return (data as LivestockStatistic[]) ?? [];
+}
+
+export async function fetchFisheriesStatistics(): Promise<FisheriesStatistic[]> {
+  const { data, error } = await supabase
+    .from("fisheries_statistics")
+    .select("*")
+    .order("period_start", { ascending: false })
+    .order("subsector", { ascending: true });
+  if (error) throw error;
+  return (data as FisheriesStatistic[]) ?? [];
+}
+
 /**
- * Recomputes and stores Yield_Statistics for the given period type. Existing
- * rows of that period type are replaced so the table always reflects current data.
- * Returns the number of statistic rows written.
+ * Recomputes and stores statistical summaries for crops, livestock, and
+ * fisheries for the given period type by invoking the `compute-statistics`
+ * Supabase Edge Function, which runs the SQL aggregations server-side.
+ * Returns the total number of statistic rows written across all sectors.
  */
 export async function computeAndStoreYieldStatistics(periodType: PeriodType): Promise<number> {
-  const { data, error } = await supabase
-    .from("harvest_inventory")
-    .select(
-      "quantity_harvested, harvested_at, planting_records(area_planted, crop_id, farm_plots(farms(barangay, farmer_id)))"
-    );
+  const { data, error } = await supabase.functions.invoke("compute-statistics", {
+    body: { periodType },
+  });
   if (error) throw error;
-
-  interface Agg {
-    crop_id: number;
-    barangay: string | null;
-    period_start: string;
-    period_end: string;
-    area: number;
-    yield: number;
-    farmers: Set<number>;
-  }
-
-  const map = new Map<string, Agg>();
-  for (const row of (data ?? []) as unknown as StatHarvestJoin[]) {
-    const pr = row.planting_records;
-    if (!pr) continue;
-    const d = new Date(row.harvested_at);
-    if (Number.isNaN(d.getTime())) continue;
-    const { start, end } = periodBounds(d, periodType);
-    const barangay = pr.farm_plots?.farms?.barangay ?? null;
-    const farmerId = pr.farm_plots?.farms?.farmer_id ?? null;
-    const key = `${pr.crop_id}|${barangay ?? ""}|${start}`;
-    const agg =
-      map.get(key) ??
-      ({
-        crop_id: pr.crop_id,
-        barangay,
-        period_start: start,
-        period_end: end,
-        area: 0,
-        yield: 0,
-        farmers: new Set<number>(),
-      } as Agg);
-    agg.area += Number(pr.area_planted ?? 0);
-    agg.yield += Number(row.quantity_harvested ?? 0);
-    if (farmerId) agg.farmers.add(farmerId);
-    map.set(key, agg);
-  }
-
-  const round = (n: number) => Math.round(n * 100) / 100;
-  const rows = [...map.values()].map((a) => ({
-    crop_id: a.crop_id,
-    barangay: a.barangay,
-    period_type: periodType,
-    period_start: a.period_start,
-    period_end: a.period_end,
-    total_area_planted: round(a.area),
-    total_yield: round(a.yield),
-    average_yield_per_hectare: a.area > 0 ? round(a.yield / a.area) : 0,
-    farmer_count: a.farmers.size,
-  }));
-
-  // Replace existing rows of this period type.
-  const { error: delError } = await supabase
-    .from("yield_statistics")
-    .delete()
-    .eq("period_type", periodType);
-  if (delError) throw delError;
-
-  if (rows.length > 0) {
-    const { error: insError } = await supabase.from("yield_statistics").insert(rows);
-    if (insError) throw insError;
-  }
-
-  return rows.length;
+  return (data as { count: number }).count ?? 0;
 }

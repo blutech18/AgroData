@@ -1,6 +1,8 @@
 import { supabase } from "@/lib/supabase";
 
-// Order matters for restore (parents before children).
+// Order matters for restore (parents before children). Covers every sector:
+// crops, livestock/poultry, fisheries, and aquaculture, plus the stored
+// statistical summaries and the audit trail.
 const TABLES = [
   "user_roles",
   "users",
@@ -11,6 +13,14 @@ const TABLES = [
   "planting_records",
   "harvest_inventory",
   "yield_statistics",
+  "livestock_species",
+  "livestock_records",
+  "fisherfolk",
+  "fish_catch",
+  "aquaculture_sites",
+  "aquaculture_cycles",
+  "livestock_statistics",
+  "fisheries_statistics",
   "audit_logs",
 ] as const;
 
@@ -26,8 +36,24 @@ const PK: Record<TableName, string> = {
   planting_records: "planting_id",
   harvest_inventory: "inventory_id",
   yield_statistics: "stat_id",
+  livestock_species: "species_id",
+  livestock_records: "record_id",
+  fisherfolk: "fisherfolk_id",
+  fish_catch: "catch_id",
+  aquaculture_sites: "site_id",
+  aquaculture_cycles: "cycle_id",
+  livestock_statistics: "stat_id",
+  fisheries_statistics: "stat_id",
   audit_logs: "log_id",
 };
+
+/**
+ * Backup format version.
+ *  1 = crop-era tables only.
+ *  2 = adds livestock/poultry, fisheries, aquaculture, and sector statistics.
+ * Version 1 files still restore: absent tables are simply reported as 0 rows.
+ */
+export const BACKUP_VERSION = 2;
 
 export interface BackupFile {
   app: "AGRODATA";
@@ -45,7 +71,7 @@ export async function exportBackup(): Promise<BackupFile> {
   }
   return {
     app: "AGRODATA",
-    version: 1,
+    version: BACKUP_VERSION,
     generatedAt: new Date().toISOString(),
     data,
   };
@@ -97,7 +123,6 @@ export async function restoreBackup(backup: BackupFile): Promise<RestoreResult> 
   const { error: rpcError } = await supabase.rpc("resync_identity_sequences");
   if (rpcError) {
     // Non-fatal: data is restored, but warn about sequence state.
-    // eslint-disable-next-line no-console
     console.warn("[AGRODATA] resync_identity_sequences failed:", rpcError.message);
   }
 

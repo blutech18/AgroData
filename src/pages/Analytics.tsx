@@ -4,15 +4,15 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
-  ComposedChart,
   Legend,
   Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import { TrendingUp, Calculator, Loader2 } from "lucide-react";
+import { Calculator, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,8 +39,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { logActivity } from "@/lib/audit";
 import { formatDate, formatNumber } from "@/lib/utils";
 import {
-  buildForecast,
   computeAndStoreYieldStatistics,
+  fetchFisheriesStatistics,
+  fetchLivestockStatistics,
   fetchYieldStatistics,
   fetchYieldTrend,
 } from "@/features/analytics";
@@ -54,11 +55,14 @@ export default function AnalyticsPage() {
 
   const trend = useQuery({ queryKey: ["yield-trend"], queryFn: fetchYieldTrend });
   const stats = useQuery({ queryKey: ["yield-statistics"], queryFn: fetchYieldStatistics });
-
-  const forecast = React.useMemo(
-    () => (trend.data ? buildForecast(trend.data, 2) : []),
-    [trend.data]
-  );
+  const livestockStats = useQuery({
+    queryKey: ["livestock-statistics"],
+    queryFn: fetchLivestockStatistics,
+  });
+  const fisheriesStats = useQuery({
+    queryKey: ["fisheries-statistics"],
+    queryFn: fetchFisheriesStatistics,
+  });
 
   const computeMutation = useMutation({
     mutationFn: () => computeAndStoreYieldStatistics(periodType),
@@ -67,14 +71,16 @@ export default function AnalyticsPage() {
         userId: profile?.user_id ?? null,
         action: "COMPUTE_STATISTICS",
         entity: "yield_statistics",
-        details: `${periodType} · ${count} summaries`,
+        details: `${periodType} · ${count} summaries (all sectors)`,
       });
       toast({
         title: "Statistics computed",
-        description: `${count} ${periodType.toLowerCase()} summary record(s) stored.`,
+        description: `${count} ${periodType.toLowerCase()} summary record(s) stored across crops, livestock, and fisheries.`,
         variant: "success",
       });
       qc.invalidateQueries({ queryKey: ["yield-statistics"] });
+      qc.invalidateQueries({ queryKey: ["livestock-statistics"] });
+      qc.invalidateQueries({ queryKey: ["fisheries-statistics"] });
     },
     onError: (err: unknown) =>
       toast({
@@ -84,15 +90,16 @@ export default function AnalyticsPage() {
       }),
   });
 
-  const lastForecast = forecast.filter((f) => f.forecast !== null && f.actual === null);
   const hasData = (trend.data?.length ?? 0) >= 2;
   const statRows = stats.data ?? [];
+  const livestockRows = livestockStats.data ?? [];
+  const fisheriesRows = fisheriesStats.data ?? [];
 
   return (
     <div>
       <PageHeader
-        title="Analytics & Forecasts"
-        description="Statistical summaries, crop yield trend analysis, and basic production forecasting."
+        title="Analytics"
+        description="Statistical summaries and historical crop yield trend analysis."
       />
 
       <div className="space-y-6">
@@ -102,43 +109,21 @@ export default function AnalyticsPage() {
           <Card>
             <EmptyState
               title="Not enough historical data"
-              description="At least two years of harvest records are needed to compute trends and forecasts."
+              description="At least two years of harvest records are needed to compute yield trends."
             />
           </Card>
         ) : (
           <>
-            {lastForecast.length > 0 && (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {lastForecast.map((f) => (
-                  <Card key={f.period}>
-                    <CardContent className="flex items-center gap-4 p-5">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                        <TrendingUp className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Forecast yield · {f.period}</p>
-                        <p className="text-2xl font-bold">{formatNumber(f.forecast, 2)}</p>
-                        <Badge variant="secondary" className="mt-1">
-                          Linear trend projection
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-
             <Card>
               <CardHeader>
-                <CardTitle>Crop Yield Trend & Forecast</CardTitle>
+                <CardTitle>Crop Yield Trend</CardTitle>
                 <CardDescription>
-                  Solid line shows historical recorded yield; dashed line projects the next periods
-                  using least-squares linear regression over historical patterns.
+                  Historical recorded yield per year, based on stored harvest records.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={340}>
-                  <ComposedChart data={forecast}>
+                  <LineChart data={trend.data}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="period" fontSize={12} />
                     <YAxis fontSize={12} />
@@ -146,22 +131,12 @@ export default function AnalyticsPage() {
                     <Legend />
                     <Line
                       type="monotone"
-                      dataKey="actual"
-                      name="Actual yield"
+                      dataKey="yield"
+                      name="Yield"
                       stroke="#1b9e4b"
                       strokeWidth={2.5}
-                      connectNulls
                     />
-                    <Line
-                      type="monotone"
-                      dataKey="forecast"
-                      name="Forecast"
-                      stroke="#f59e0b"
-                      strokeWidth={2.5}
-                      strokeDasharray="6 4"
-                      connectNulls
-                    />
-                  </ComposedChart>
+                  </LineChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
@@ -199,12 +174,13 @@ export default function AnalyticsPage() {
           </>
         )}
 
-        {/* Stored statistical summaries (Yield_Statistics) */}
+        {/* Stored statistical summaries — crops (yield_statistics) */}
         <Card className="overflow-hidden">
           <CardHeader>
-            <CardTitle>Statistical Summaries</CardTitle>
+            <CardTitle>Crop Statistical Summaries</CardTitle>
             <CardDescription>
-              Computed per crop and barangay, stored for the selected reporting period.
+              Computed per crop and barangay. The button below recomputes crop, livestock, and
+              fisheries summaries for the selected reporting period.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -268,6 +244,118 @@ export default function AnalyticsPage() {
                         <TableCell>{formatNumber(s.total_yield, 2)}</TableCell>
                         <TableCell>{formatNumber(s.average_yield_per_hectare, 2)}</TableCell>
                         <TableCell>{formatNumber(s.farmer_count)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Stored statistical summaries — livestock & poultry */}
+        <Card className="overflow-hidden">
+          <CardHeader>
+            <CardTitle>Livestock & Poultry Statistical Summaries</CardTitle>
+            <CardDescription>
+              Computed per species and barangay for the selected reporting period.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {livestockStats.isLoading ? (
+              <LoadingState label="Loading summaries…" />
+            ) : livestockRows.length === 0 ? (
+              <EmptyState
+                title="No livestock statistics stored yet"
+                description="Use Compute & store above to generate summaries."
+              />
+            ) : (
+              <div className="overflow-x-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Species</TableHead>
+                      <TableHead>Barangay</TableHead>
+                      <TableHead>Period</TableHead>
+                      <TableHead>Inventory</TableHead>
+                      <TableHead>Births</TableHead>
+                      <TableHead>Deaths</TableHead>
+                      <TableHead>Disposed</TableHead>
+                      <TableHead>Production</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {livestockRows.map((s) => (
+                      <TableRow key={s.stat_id}>
+                        <TableCell className="font-medium">
+                          {s.livestock_species?.species_name ?? "—"}
+                        </TableCell>
+                        <TableCell>{s.barangay ?? "All"}</TableCell>
+                        <TableCell className="whitespace-nowrap text-sm">
+                          <Badge variant="secondary" className="mr-1">
+                            {s.period_type}
+                          </Badge>
+                          {formatDate(s.period_start)} – {formatDate(s.period_end)}
+                        </TableCell>
+                        <TableCell>{formatNumber(s.total_inventory)}</TableCell>
+                        <TableCell>{formatNumber(s.total_births)}</TableCell>
+                        <TableCell>{formatNumber(s.total_deaths)}</TableCell>
+                        <TableCell>{formatNumber(s.total_disposed)}</TableCell>
+                        <TableCell>{formatNumber(s.total_production, 2)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Stored statistical summaries — fisheries */}
+        <Card className="overflow-hidden">
+          <CardHeader>
+            <CardTitle>Fisheries Statistical Summaries</CardTitle>
+            <CardDescription>
+              Computed per species and municipal subsector for the selected reporting period.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {fisheriesStats.isLoading ? (
+              <LoadingState label="Loading summaries…" />
+            ) : fisheriesRows.length === 0 ? (
+              <EmptyState
+                title="No fisheries statistics stored yet"
+                description="Use Compute & store above to generate summaries."
+              />
+            ) : (
+              <div className="overflow-x-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Subsector</TableHead>
+                      <TableHead>Species</TableHead>
+                      <TableHead>Period</TableHead>
+                      <TableHead>Total Catch</TableHead>
+                      <TableHead>Records</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {fisheriesRows.map((s) => (
+                      <TableRow key={s.stat_id}>
+                        <TableCell className="font-medium">
+                          {s.subsector === "MARINE_MUNICIPAL"
+                            ? "Marine (municipal)"
+                            : "Inland (municipal)"}
+                        </TableCell>
+                        <TableCell>{s.species_name}</TableCell>
+                        <TableCell className="whitespace-nowrap text-sm">
+                          <Badge variant="secondary" className="mr-1">
+                            {s.period_type}
+                          </Badge>
+                          {formatDate(s.period_start)} – {formatDate(s.period_end)}
+                        </TableCell>
+                        <TableCell>{formatNumber(s.total_catch, 2)}</TableCell>
+                        <TableCell>{formatNumber(s.catch_records)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

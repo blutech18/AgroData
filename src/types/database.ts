@@ -118,3 +118,117 @@ export interface AuditLog {
   created_at: string;
   users?: Pick<AppUser, "first_name" | "last_name" | "username"> | null;
 }
+
+// ---------------------------------------------------------------------------
+// Livestock/Poultry & Fisheries/Aquaculture expansion (migration 0006)
+// ---------------------------------------------------------------------------
+
+export type LivestockCategory = "LIVESTOCK" | "POULTRY";
+export type AnimalProductType = "MEAT" | "MILK" | "EGGS" | "OTHER";
+export type FishingInvolvement = "FULL_TIME" | "PART_TIME";
+export type FisheriesSubsector = "MARINE_MUNICIPAL" | "INLAND_MUNICIPAL";
+export type AquaSiteType = "POND" | "CAGE" | "TANK" | "PEN";
+export type WaterEnvironment = "FRESHWATER" | "BRACKISH" | "MARINE";
+export type AquaCycleStatus = "STOCKED" | "HARVESTED" | "LOST";
+
+export interface LivestockSpecies {
+  species_id: number;
+  species_name: string;
+  category: LivestockCategory;
+  primary_product: string | null;
+}
+
+export interface LivestockRecord {
+  record_id: number;
+  farmer_id: number;
+  species_id: number;
+  barangay: string;
+  record_date: string;
+  inventory_count: number;
+  births: number;
+  deaths: number;
+  disposed: number;
+  production_type: AnimalProductType | null;
+  production_qty: number | null;
+  production_unit: string | null;
+  notes: string | null;
+  farmers?: Pick<Farmer, "first_name" | "last_name"> | null;
+  livestock_species?: Pick<LivestockSpecies, "species_name" | "category"> | null;
+}
+
+export interface Fisherfolk {
+  fisherfolk_id: number;
+  farmer_id: number;
+  barangay: string;
+  involvement: FishingInvolvement;
+  vessel_type: string | null;
+  gear_type: string | null;
+  registered_at: string;
+  farmers?: Pick<Farmer, "first_name" | "last_name"> | null;
+}
+
+export interface FishCatch {
+  catch_id: number;
+  fisherfolk_id: number;
+  catch_date: string;
+  subsector: FisheriesSubsector;
+  species_name: string;
+  quantity: number;
+  unit: string;
+  notes: string | null;
+  fisherfolk?:
+    | (Pick<Fisherfolk, "barangay"> & { farmers?: Pick<Farmer, "first_name" | "last_name"> | null })
+    | null;
+}
+
+export interface AquacultureSite {
+  site_id: number;
+  farmer_id: number;
+  site_name: string;
+  barangay: string;
+  site_type: AquaSiteType;
+  water_environment: WaterEnvironment;
+  area_size: number | null;
+  farmers?: Pick<Farmer, "first_name" | "last_name"> | null;
+}
+
+export interface AquacultureCycle {
+  cycle_id: number;
+  site_id: number;
+  species_name: string;
+  stocking_date: string;
+  stocking_qty: number | null;
+  harvest_date: string | null;
+  harvest_qty: number | null;
+  unit: string;
+  status: AquaCycleStatus;
+  aquaculture_sites?: Pick<AquacultureSite, "site_name" | "barangay"> | null;
+}
+
+export interface LivestockStatistic {
+  stat_id: number;
+  species_id: number;
+  barangay: string | null;
+  period_type: PeriodType;
+  period_start: string;
+  period_end: string;
+  total_inventory: number | null;
+  total_births: number | null;
+  total_deaths: number | null;
+  total_disposed: number | null;
+  total_production: number | null;
+  computed_at: string;
+  livestock_species?: Pick<LivestockSpecies, "species_name" | "category"> | null;
+}
+
+export interface FisheriesStatistic {
+  stat_id: number;
+  subsector: FisheriesSubsector;
+  species_name: string;
+  period_type: PeriodType;
+  period_start: string;
+  period_end: string;
+  total_catch: number | null;
+  catch_records: number | null;
+  computed_at: string;
+}

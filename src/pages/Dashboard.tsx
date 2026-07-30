@@ -6,6 +6,9 @@ import {
   Wheat,
   Ruler,
   Scale,
+  Beef,
+  Fish,
+  Waves,
 } from "lucide-react";
 import {
   Bar,
@@ -31,6 +34,8 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   fetchAreaByBarangay,
   fetchDashboardSummary,
+  fetchFishCatchBySubsector,
+  fetchLivestockBySpecies,
   fetchYieldByCrop,
   fetchYieldTrend,
 } from "@/features/analytics";
@@ -43,6 +48,14 @@ export default function DashboardPage() {
   const byCrop = useQuery({ queryKey: ["yield-by-crop"], queryFn: fetchYieldByCrop });
   const byBarangay = useQuery({ queryKey: ["area-by-barangay"], queryFn: fetchAreaByBarangay });
   const trend = useQuery({ queryKey: ["yield-trend"], queryFn: fetchYieldTrend });
+  const livestockBySpecies = useQuery({
+    queryKey: ["livestock-by-species"],
+    queryFn: fetchLivestockBySpecies,
+  });
+  const catchBySubsector = useQuery({
+    queryKey: ["catch-by-subsector"],
+    queryFn: fetchFishCatchBySubsector,
+  });
 
   const s = summary.data;
 
@@ -74,6 +87,27 @@ export default function DashboardPage() {
               icon={Scale}
               accent="emerald"
               hint="aggregate harvested quantity"
+            />
+            <StatCard
+              label="Livestock & Poultry Inventory"
+              value={formatNumber(s?.animalInventory)}
+              icon={Beef}
+              accent="amber"
+              hint="recorded animal count"
+            />
+            <StatCard
+              label="Fish Catch Recorded"
+              value={formatNumber(s?.fishCatch, 2)}
+              icon={Fish}
+              accent="sky"
+              hint="aggregate municipal catch"
+            />
+            <StatCard
+              label="Aquaculture Harvest"
+              value={formatNumber(s?.aquacultureHarvest, 2)}
+              icon={Waves}
+              accent="primary"
+              hint="aggregate cycle harvest"
             />
           </div>
 
@@ -148,6 +182,57 @@ export default function DashboardPage() {
                   </ResponsiveContainer>
                 ) : (
                   <EmptyState title="No trend data yet" description="Historical trends appear as records accumulate." />
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Livestock & Poultry Inventory by Species</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {livestockBySpecies.data && livestockBySpecies.data.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={livestockBySpecies.data.slice(0, 8)}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="name" fontSize={12} interval={0} angle={-20} textAnchor="end" height={60} />
+                      <YAxis fontSize={12} />
+                      <Tooltip formatter={(v: number) => formatNumber(v)} />
+                      <Bar dataKey="value" name="Inventory" fill="#d97706" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <EmptyState title="No livestock data yet" description="Record livestock inventory to see species distribution." />
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Fish Catch by Subsector</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {catchBySubsector.data && catchBySubsector.data.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={catchBySubsector.data}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={100}
+                        label={(e) => e.name}
+                      >
+                        {catchBySubsector.data.map((_, i) => (
+                          <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v: number) => formatNumber(v, 2)} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <EmptyState title="No fish catch data yet" description="Record fish catch to see subsector distribution." />
                 )}
               </CardContent>
             </Card>

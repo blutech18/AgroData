@@ -305,16 +305,30 @@ export default function UsersPage() {
                   <TableCell>{formatDate(u.created_at)}</TableCell>
                   <TableCell>
                     <div className="flex justify-center gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(u)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEdit(u)}
+                        title={`Edit ${u.first_name} ${u.last_name}`}
+                      >
                         <Pencil className="h-4 w-4" />
+                        <span className="sr-only">
+                          Edit {u.first_name} {u.last_name}
+                        </span>
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        title={u.account_status === "ACTIVE" ? "Deactivate" : "Activate"}
+                        title={`${u.account_status === "ACTIVE" ? "Deactivate" : "Activate"} ${
+                          u.first_name
+                        } ${u.last_name}`}
                         onClick={() => setStatusTarget(u)}
                       >
                         <Power className="h-4 w-4" />
+                        <span className="sr-only">
+                          {u.account_status === "ACTIVE" ? "Deactivate" : "Activate"}{" "}
+                          {u.first_name} {u.last_name}
+                        </span>
                       </Button>
                     </div>
                   </TableCell>

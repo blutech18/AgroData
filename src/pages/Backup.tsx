@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { logActivity } from "@/lib/audit";
 import { formatDate } from "@/lib/utils";
 import {
+  BACKUP_VERSION,
   downloadBackup,
   exportBackup,
   parseBackupFile,
@@ -156,7 +157,11 @@ export default function BackupPage() {
           pending
             ? `This will import ${pendingCount} record(s) from a backup generated ${formatDate(
                 pending.generatedAt
-              )}. Matching records will be overwritten.`
+              )}. Matching records will be overwritten.${
+                (pending.version ?? 1) < BACKUP_VERSION
+                  ? " This is an older backup format that predates the livestock, fisheries, and aquaculture modules, so those records are not included in the file and will be left unchanged."
+                  : ""
+              }`
             : undefined
         }
         confirmLabel="Restore"

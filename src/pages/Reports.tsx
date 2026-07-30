@@ -10,13 +10,21 @@ import {
   Users,
   FileSpreadsheet,
   FileType,
+  Beef,
+  Fish,
   type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -39,31 +47,89 @@ import {
   type ReportType,
 } from "@/features/reports";
 
+type PeriodMode = "quarter" | "season" | "year" | "none";
+
 const reportTypes: {
   value: ReportType;
   label: string;
   desc: string;
   icon: LucideIcon;
+  period: PeriodMode;
 }[] = [
   {
-    value: "crop_production",
-    label: "Crop Production Report",
-    desc: "Total area, yield, and average yield per crop.",
+    value: "quarterly_crop_production",
+    label: "Quarterly Crop Production Report",
+    desc: "Crop types, area planted, and total yield per barangay for a quarter.",
     icon: Sprout,
+    period: "quarter",
   },
   {
-    value: "barangay_summary",
-    label: "Barangay Production Summary",
-    desc: "Production aggregated by barangay (PAO compliance).",
+    value: "seasonal_farm_inventory",
+    label: "Seasonal Farm Inventory Report",
+    desc: "Registered farms, land classifications, and planting activities per season.",
     icon: MapPin,
+    period: "season",
+  },
+  {
+    value: "annual_municipal_summary",
+    label: "Annual Municipal Agriculture Summary",
+    desc: "Yearly crop production consolidated across all barangays and crop categories.",
+    icon: FileSpreadsheet,
+    period: "year",
+  },
+  {
+    value: "livestock_inventory",
+    label: "Livestock & Poultry Inventory Report",
+    desc: "Inventory, births, deaths, dispositions, and production per species for a quarter.",
+    icon: Beef,
+    period: "quarter",
+  },
+  {
+    value: "fisheries_catch",
+    label: "Municipal Fisheries Catch Report",
+    desc: "Total catch per species and subsector (marine/inland) for a quarter.",
+    icon: Fish,
+    period: "quarter",
   },
   {
     value: "farmer_registry",
     label: "Farmer Registry",
-    desc: "Complete list of registered farmers.",
+    desc: "Complete list of registered farmers (farmer profiling).",
     icon: Users,
+    period: "none",
   },
 ];
+
+const QUARTER_RANGES: Record<string, [string, string]> = {
+  "1": ["01-01", "03-31"],
+  "2": ["04-01", "06-30"],
+  "3": ["07-01", "09-30"],
+  "4": ["10-01", "12-31"],
+};
+
+/**
+ * Resolves the report's date range from the selected period controls.
+ * Dry season spans Nov (selected year) to Apr (following year); wet season
+ * spans May to Oct of the selected year.
+ */
+function resolveRange(
+  period: PeriodMode,
+  year: string,
+  quarter: string,
+  season: "WET" | "DRY"
+): { from?: string; to?: string } {
+  if (period === "year") return { from: `${year}-01-01`, to: `${year}-12-31` };
+  if (period === "quarter") {
+    const [start, end] = QUARTER_RANGES[quarter];
+    return { from: `${year}-${start}`, to: `${year}-${end}` };
+  }
+  if (period === "season") {
+    return season === "WET"
+      ? { from: `${year}-05-01`, to: `${year}-10-31` }
+      : { from: `${year}-11-01`, to: `${Number(year) + 1}-04-30` };
+  }
+  return {};
+}
 
 function Signatory({ label, name, role }: { label: string; name?: string; role: string }) {
   return (
@@ -81,13 +147,21 @@ export default function ReportsPage() {
   const { toast } = useToast();
   const { profile } = useAuth();
   const preparerName = profile ? `${profile.first_name} ${profile.last_name}` : "";
-  const [type, setType] = React.useState<ReportType>("crop_production");
-  const [from, setFrom] = React.useState("");
-  const [to, setTo] = React.useState("");
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 6 }, (_, i) => String(currentYear - i));
+  const [type, setType] = React.useState<ReportType>("quarterly_crop_production");
+  const [year, setYear] = React.useState(String(currentYear));
+  const [quarter, setQuarter] = React.useState("1");
+  const [season, setSeason] = React.useState<"WET" | "DRY">("WET");
   const [report, setReport] = React.useState<ReportResult | null>(null);
 
+  const periodMode = reportTypes.find((r) => r.value === type)?.period ?? "none";
+
   const genMutation = useMutation({
-    mutationFn: () => generateReport(type, from || undefined, to || undefined),
+    mutationFn: () => {
+      const { from, to } = resolveRange(periodMode, year, quarter, season);
+      return generateReport(type, from, to);
+    },
     onSuccess: async (result) => {
       setReport(result);
       await logActivity({
@@ -106,7 +180,6 @@ export default function ReportsPage() {
   });
 
   const handlePrint = () => window.print();
-  const usesDateRange = type !== "farmer_registry";
 
   return (
     <div>
@@ -159,42 +232,69 @@ export default function ReportsPage() {
               </div>
             </div>
 
-            {usesDateRange && (
+            {periodMode !== "none" && (
               <div>
                 <Label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  2 · Date range <span className="font-normal normal-case">· optional</span>
+                  2 · Reporting period
                 </Label>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-xs font-medium text-muted-foreground">
-                      From
-                    </span>
-                    <Input
-                      id="from"
-                      type="date"
-                      aria-label="From date"
-                      className="pl-12"
-                      value={from}
-                      onChange={(e) => setFrom(e.target.value)}
-                    />
+                  <div className="space-y-1.5">
+                    <Label htmlFor="year" className="text-xs font-normal text-muted-foreground">
+                      Year
+                    </Label>
+                    <Select value={year} onValueChange={setYear}>
+                      <SelectTrigger id="year" aria-label="Year">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {years.map((y) => (
+                          <SelectItem key={y} value={y}>
+                            {y}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-xs font-medium text-muted-foreground">
-                      To
-                    </span>
-                    <Input
-                      id="to"
-                      type="date"
-                      aria-label="To date"
-                      className="pl-12"
-                      value={to}
-                      onChange={(e) => setTo(e.target.value)}
-                    />
-                  </div>
+
+                  {periodMode === "quarter" && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="quarter" className="text-xs font-normal text-muted-foreground">
+                        Quarter
+                      </Label>
+                      <Select value={quarter} onValueChange={setQuarter}>
+                        <SelectTrigger id="quarter" aria-label="Quarter">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">Q1 · Jan–Mar</SelectItem>
+                          <SelectItem value="2">Q2 · Apr–Jun</SelectItem>
+                          <SelectItem value="3">Q3 · Jul–Sep</SelectItem>
+                          <SelectItem value="4">Q4 · Oct–Dec</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {periodMode === "season" && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="season" className="text-xs font-normal text-muted-foreground">
+                        Season
+                      </Label>
+                      <Select
+                        value={season}
+                        onValueChange={(v) => setSeason(v as "WET" | "DRY")}
+                      >
+                        <SelectTrigger id="season" aria-label="Season">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="WET">Wet · May–Oct</SelectItem>
+                          <SelectItem value="DRY">Dry · Nov–Apr</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
-                <p className="mt-1.5 text-xs text-muted-foreground">
-                  Leave blank to include all records.
-                </p>
               </div>
             )}
 

@@ -1,0 +1,188 @@
+AGRODATA — EXPECTED PANEL QUESTIONS AND ANSWERS
+================================================
+
+
+QUESTION 1: What is the "analytics module"?
+
+ANSWER:
+The analytics module is a dashboard feature inside the AGRODATA system that reads the
+recorded agricultural data from the database and displays it as charts, graphs, and summary
+numbers. It does not require the user to manually compute anything. When the Municipal
+Agriculturalist opens the dashboard, the system automatically runs SQL aggregation queries
+against the PostgreSQL database through Supabase to compute totals, averages, and counts
+from the planting_records, harvest_inventory, and yield_statistics tables. The results are then
+displayed on screen as visual charts — for example, a bar chart of total harvest per crop type,
+a comparison of production per barangay, or a summary of how many farmers are registered.
+In simple terms, it turns the stored data into a visual summary that helps the Municipal
+Agriculturalist understand agricultural performance at a glance without reading through
+individual records.
+
+
+─────────────────────────────────────────────────────────────────────────────
+
+
+QUESTION 2: What specific data does the analytics module show?
+
+ANSWER:
+The analytics module shows the following:
+- Total number of registered farmers and farms per barangay
+- Total area planted per crop type
+- Total and average harvest yield per crop type
+- Crop production distribution across barangays (e.g., which barangay produces the most rice)
+- Historical production comparison across planting seasons
+- Number of planting activities by status (Planted, Harvested, Spoiled)
+All of these are computed directly from the existing tables in the database — specifically
+from planting_records, harvest_inventory, farmers, farms, and yield_statistics.
+
+
+─────────────────────────────────────────────────────────────────────────────
+
+
+QUESTION 3: What reports does the system generate for the Provincial Agriculture Office?
+
+ANSWER:
+The system generates three compliance reports for the Provincial Agriculture Office:
+1. Quarterly Crop Production Report — total area planted and total yield per crop type
+   for a selected quarter.
+2. Seasonal Farm Inventory Report — list of active farms, plots, and their planting
+   activities for a selected season.
+3. Annual Municipal Agriculture Summary — yearly overview of total production, number
+   of farmers, and land utilization across all barangays.
+All three reports are formatted according to the standard reporting requirements of the
+Provincial Agriculture Office and can be downloaded as PDF or Excel.
+
+
+─────────────────────────────────────────────────────────────────────────────
+
+
+QUESTION 4: How is the report generation automated? What makes it "automation"?
+
+ANSWER:
+When the Municipal Agriculturalist clicks "Generate Report," the system automatically
+queries the database using pre-written SQL queries through Supabase, compiles the data,
+formats it into the required report structure, and produces the output file — all without
+the user manually gathering or computing anything. This replaces the previous process
+where OMA staff had to go through logbooks, manually tally figures, and type the report
+by hand. The automation eliminates manual data compilation, reduces human error, and
+ensures the report always reflects the latest data in the database.
+
+
+─────────────────────────────────────────────────────────────────────────────
+
+
+QUESTION 5: Why was forecasting removed from the system?
+
+ANSWER:
+Forecasting was removed based on the adviser's instruction after the defense. The system
+is intentionally limited to descriptive statistical analysis — meaning it only summarizes
+and visualizes data that is already recorded. Forecasting would require historical data
+spanning multiple seasons, statistical modeling, and validation that is beyond the current
+scope of the study. Limiting the analytics to descriptive statistics keeps the system
+aligned with the actual data available at the OMA of LGU Kinoguitan and ensures the
+outputs are accurate and reliable.
+
+
+─────────────────────────────────────────────────────────────────────────────
+
+
+QUESTION 6: What technology is used to build AGRODATA?
+
+ANSWER:
+The system uses the following technology stack:
+- Frontend: React with Vite (web browser-based user interface)
+- Backend/Database: Supabase, which is built on top of PostgreSQL
+- Authentication: Supabase Auth with role-based access control
+- Database queries: SQL aggregation queries executed through Supabase
+- Deployment: LAN-based (accessible within the municipal office network)
+Row-Level Security (RLS) is enabled on all tables to ensure only authorized OMA personnel
+can access or modify the data.
+
+
+─────────────────────────────────────────────────────────────────────────────
+
+
+QUESTION 7: How does the system prevent duplicate records?
+
+ANSWER:
+The system prevents duplicate records through database-level constraints defined in the
+PostgreSQL schema. For farmers, a unique constraint is applied on the combination of
+first_name, last_name, birthdate, and barangay — so the same person cannot be registered
+twice. For crops, the crop_name field has a unique constraint. For user accounts, both
+email and username fields are unique. These constraints are enforced at the database level,
+meaning even if someone bypasses the form, the database will reject the duplicate entry.
+The system also performs real-time validation on the form before submission to alert the
+user before the data reaches the database.
+
+
+─────────────────────────────────────────────────────────────────────────────
+
+
+QUESTION 8: How does the system ensure data security?
+
+ANSWER:
+The system uses Supabase's Row-Level Security (RLS), which means every database table
+has access policies that check whether the logged-in user has an active account and the
+correct role before allowing any read or write operation. There are two roles: OMA Staff,
+who can manage farmer and crop data, and Municipal Agriculturalist, who has full
+administrative access including user management, backup, and audit logs. All authentication
+is handled through Supabase Auth. Passwords are never stored in plain text.
+
+
+─────────────────────────────────────────────────────────────────────────────
+
+
+QUESTION 9: Who can access the analytics dashboard?
+
+ANSWER:
+Both the Municipal Agriculturalist and OMA Staff can access the analytics dashboard,
+since both roles have active profiles with read access to the relevant tables. However,
+only the Municipal Agriculturalist can generate the official compliance reports for the
+Provincial Agriculture Office, as report generation is restricted to the administrator role.
+
+
+─────────────────────────────────────────────────────────────────────────────
+
+
+QUESTION 10: How does this system benefit the farmers directly?
+
+ANSWER:
+Farmers do not directly access the system. However, they benefit indirectly because
+the system helps OMA staff manage their records more accurately and efficiently.
+With organized and up-to-date data, the Municipal Agriculturalist can quickly identify
+which farmers need support, which areas have low production, and how to better target
+government programs and subsidies. The analytics dashboard makes this information
+visible and actionable for the office, which translates to better and faster service
+delivery to farmers.
+
+
+─────────────────────────────────────────────────────────────────────────────
+
+
+QUESTION 11: What is the yield_statistics table used for?
+
+ANSWER:
+The yield_statistics table stores pre-computed summary data for analytics. Instead of
+running heavy aggregation queries from scratch every time the dashboard is opened,
+the system can store computed totals, averages, and counts in this table for quick
+retrieval. Each record in the table represents a statistical summary for one crop type,
+in one barangay, for a specific time period (monthly, quarterly, or yearly). It is linked
+to the crops table through the crop_id foreign key with a one-to-many relationship,
+meaning one crop can have many statistical summary records across different periods
+and barangays.
+
+
+─────────────────────────────────────────────────────────────────────────────
+
+
+QUESTION 12: What is the difference between the current system and the proposed system?
+
+ANSWER:
+The current system is entirely paper-based. OMA staff record all data by hand in
+logbooks, store them in filing cabinets, and manually compile everything when a report
+is needed. This is slow, error-prone, and makes it nearly impossible to retrieve or
+cross-reference data quickly. The proposed AGRODATA system replaces all of this with
+a centralized digital database where data is entered through web forms, validated
+automatically, stored securely, and made retrievable in seconds. On top of that,
+the system automatically generates compliance reports and displays the data as visual
+analytics — capabilities the current manual system cannot provide at all.
+

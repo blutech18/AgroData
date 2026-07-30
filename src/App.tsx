@@ -13,6 +13,12 @@ import PlotsPage from "@/pages/Plots";
 import CropsPage from "@/pages/Crops";
 import PlantingPage from "@/pages/Planting";
 import HarvestPage from "@/pages/Harvest";
+import LivestockSpeciesPage from "@/pages/LivestockSpecies";
+import LivestockPage from "@/pages/Livestock";
+import FisherfolkPage from "@/pages/Fisherfolk";
+import FishCatchPage from "@/pages/FishCatch";
+import AquacultureSitesPage from "@/pages/AquacultureSites";
+import AquacultureCyclesPage from "@/pages/AquacultureCycles";
 import AnalyticsPage from "@/pages/Analytics";
 import ReportsPage from "@/pages/Reports";
 import UsersPage from "@/pages/Users";
@@ -66,7 +72,20 @@ export default function App() {
         <Route path="/crops" element={<CropsPage />} />
         <Route path="/planting" element={<PlantingPage />} />
         <Route path="/harvest" element={<HarvestPage />} />
-        <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/livestock-species" element={<LivestockSpeciesPage />} />
+        <Route path="/livestock" element={<LivestockPage />} />
+        <Route path="/fisherfolk" element={<FisherfolkPage />} />
+        <Route path="/fish-catch" element={<FishCatchPage />} />
+        <Route path="/aquaculture-sites" element={<AquacultureSitesPage />} />
+        <Route path="/aquaculture-cycles" element={<AquacultureCyclesPage />} />
+        <Route
+          path="/reports"
+          element={
+            <RequireAdmin>
+              <ReportsPage />
+            </RequireAdmin>
+          }
+        />
         <Route
           path="/users"
           element={

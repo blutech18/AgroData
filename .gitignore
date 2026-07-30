@@ -28,3 +28,8 @@ dist-ssr
 # Supabase
 .branches
 .temp
+
+# Large local reference material (keep the written deliverables tracked)
+docs/*.xlsx
+docs/*.docx
+docs/*.pdf

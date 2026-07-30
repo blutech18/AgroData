@@ -1,6 +1,6 @@
 import * as React from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { LoadingState, EmptyState, ErrorState } from "@/components/shared/states";
+import { RowActions } from "@/components/shared/RowActions";
 import { TablePagination } from "@/components/shared/TablePagination";
 import { useToast } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/useAuth";
@@ -39,11 +40,21 @@ import { formatDate } from "@/lib/utils";
 import {
   createFarmer,
   deleteFarmer,
+  fetchFarmerSectors,
   fetchFarmers,
+  findPossibleDuplicates,
   updateFarmer,
   type FarmerInput,
+  type FarmerSectors,
 } from "@/features/farmers";
 import type { Farmer } from "@/types/database";
+
+const SECTOR_LABELS: { key: keyof FarmerSectors; label: string }[] = [
+  { key: "crops", label: "Crops" },
+  { key: "livestock", label: "Livestock" },
+  { key: "fisheries", label: "Fisheries" },
+  { key: "aquaculture", label: "Aquaculture" },
+];
 
 const emptyForm: FarmerInput = {
   first_name: "",
@@ -66,6 +77,8 @@ export default function FarmersPage() {
   const [editing, setEditing] = React.useState<Farmer | null>(null);
   const [form, setForm] = React.useState<FarmerInput>(emptyForm);
   const [toDelete, setToDelete] = React.useState<Farmer | null>(null);
+  const [duplicates, setDuplicates] = React.useState<Farmer[]>([]);
+  const [checkingDuplicates, setCheckingDuplicates] = React.useState(false);
 
   React.useEffect(() => {
     const t = setTimeout(() => { setDebounced(search); setPage(1); }, 300);
@@ -82,9 +95,22 @@ export default function FarmersPage() {
 
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const farmers = data?.rows ?? [];
+  const rows = data?.rows;
+  const farmers = React.useMemo(() => rows ?? [], [rows]);
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["farmers"] });
+  const farmerIds = React.useMemo(() => farmers.map((f) => f.farmer_id), [farmers]);
+
+  const { data: sectors } = useQuery({
+    queryKey: ["farmer-sectors", farmerIds],
+    queryFn: () => fetchFarmerSectors(farmerIds),
+    enabled: farmerIds.length > 0,
+    placeholderData: keepPreviousData,
+  });
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["farmers"] });
+    qc.invalidateQueries({ queryKey: ["farmer-sectors"] });
+  };
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -104,6 +130,7 @@ export default function FarmersPage() {
         variant: "success",
       });
       setDialogOpen(false);
+      setDuplicates([]);
       invalidate();
     },
     onError: (err: unknown) => {
@@ -140,14 +167,43 @@ export default function FarmersPage() {
     },
   });
 
+  /**
+   * Register Producer AF-1: warn about a possible duplicate before saving so
+   * staff can review the existing record instead of silently creating another
+   * profile for the same person.
+   */
+  const submitForm = async () => {
+    if (duplicates.length > 0) {
+      saveMutation.mutate();
+      return;
+    }
+    setCheckingDuplicates(true);
+    try {
+      const matches = await findPossibleDuplicates(form, editing?.farmer_id);
+      if (matches.length > 0) {
+        setDuplicates(matches);
+        return;
+      }
+      saveMutation.mutate();
+    } catch {
+      // Detection is advisory only; the database constraint remains the
+      // authoritative guard against exact duplicates.
+      saveMutation.mutate();
+    } finally {
+      setCheckingDuplicates(false);
+    }
+  };
+
   const openCreate = () => {
     setEditing(null);
     setForm(emptyForm);
+    setDuplicates([]);
     setDialogOpen(true);
   };
 
   const openEdit = (f: Farmer) => {
     setEditing(f);
+    setDuplicates([]);
     setForm({
       first_name: f.first_name,
       last_name: f.last_name,
@@ -204,6 +260,7 @@ export default function FarmersPage() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Sex</TableHead>
+                <TableHead>Sectors</TableHead>
                 <TableHead>Barangay</TableHead>
                 <TableHead>Contact</TableHead>
                 <TableHead>Registered</TableHead>
@@ -219,25 +276,34 @@ export default function FarmersPage() {
                   <TableCell>
                     <Badge variant="secondary">{f.sex}</Badge>
                   </TableCell>
+                  <TableCell>
+                    {(() => {
+                      const active = SECTOR_LABELS.filter(
+                        (s) => sectors?.[f.farmer_id]?.[s.key]
+                      );
+                      if (active.length === 0) {
+                        return (
+                          <span className="text-xs text-muted-foreground">No records yet</span>
+                        );
+                      }
+                      return (
+                        <div className="flex flex-wrap gap-1">
+                          {active.map((s) => (
+                            <Badge key={s.key}>{s.label}</Badge>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </TableCell>
                   <TableCell>{f.barangay}</TableCell>
                   <TableCell>{f.contact_no}</TableCell>
                   <TableCell>{formatDate(f.registration_date)}</TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-center gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(f)}>
-                        <Pencil className="h-4 w-4" />
-                        <span className="sr-only">Edit</span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setToDelete(f)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Delete</span>
-                      </Button>
-                    </div>
+                    <RowActions
+                      label={`${f.first_name} ${f.last_name}`}
+                      onEdit={() => openEdit(f)}
+                      onDelete={() => setToDelete(f)}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
@@ -257,7 +323,13 @@ export default function FarmersPage() {
       </Card>
 
       {/* Create / Edit dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setDuplicates([]);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editing ? "Edit Farmer" : "Register Farmer"}</DialogTitle>
@@ -265,7 +337,7 @@ export default function FarmersPage() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              saveMutation.mutate();
+              void submitForm();
             }}
             className="space-y-4"
           >
@@ -351,12 +423,45 @@ export default function FarmersPage() {
               />
             </div>
 
+            {duplicates.length > 0 && (
+              <div
+                role="alert"
+                className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200"
+              >
+                <p className="font-medium">Possible duplicate producer found</p>
+                <p>
+                  A producer with the same name and matching birthdate or barangay is already
+                  registered. Review the existing record below, or confirm to save this profile
+                  anyway.
+                </p>
+                <ul className="space-y-1">
+                  {duplicates.map((d) => (
+                    <li key={d.farmer_id}>
+                      {d.last_name}, {d.first_name} · {d.barangay} · born {formatDate(d.birthdate)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saveMutation.isPending}>
-                {saveMutation.isPending ? "Saving…" : editing ? "Save changes" : "Register"}
+              <Button
+                type="submit"
+                disabled={saveMutation.isPending || checkingDuplicates}
+                variant={duplicates.length > 0 ? "destructive" : "default"}
+              >
+                {saveMutation.isPending
+                  ? "Saving…"
+                  : checkingDuplicates
+                    ? "Checking…"
+                    : duplicates.length > 0
+                      ? "Save anyway"
+                      : editing
+                        ? "Save changes"
+                        : "Register"}
               </Button>
             </DialogFooter>
           </form>

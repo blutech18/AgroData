@@ -20,16 +20,20 @@ The primary purpose of the system is to empower the LGU with accurate, real-time
 
 ## ✨ Core Capabilities
 
-AGRODATA covers four integrated capabilities as described in the system's capstone study:
+AGRODATA covers integrated capabilities across three production domains — **crops**, **livestock/poultry**, and **fisheries/aquaculture** — as described in the system's capstone study:
 
-1. **Farmer & Crop Yield Inventory** 
-   Comprehensive farmer profiling, detailed land/plot records, and continuous crop monitoring from planting to harvest.
-2. **Data Validation & Consistency Checks** 
+1. **Unified Producer & Crop Yield Inventory** 
+   Comprehensive producer profiling, detailed land/plot records, and continuous crop monitoring from planting to harvest.
+2. **Livestock & Poultry Records** 
+   Species catalog plus periodic inventory, births, deaths, dispositions, and production (meat/milk/eggs) per producer.
+3. **Fisheries & Aquaculture Records** 
+   Fisherfolk profiles and municipal fish catch (marine/inland), plus aquaculture sites and stocking-to-harvest culture cycles.
+4. **Data Validation & Consistency Checks** 
    Strict database-level constraints and duplicate prevention mechanisms to ensure high data quality and reliability.
-3. **Automated Report Generation** 
-   One-click generation of standardized municipal and Provincial Agriculture Office (PAO) compliance reports, ready for printing or digital submission.
-4. **Analytics & Decision Support** 
-   Interactive visual dashboards, yield trend analysis, statistical summaries, and basic production forecasting to guide agricultural policies.
+5. **Automated Report Generation** 
+   One-click generation of standardized crop, livestock, fisheries, and municipal compliance reports for printing or digital submission.
+6. **Analytics & Decision Support** 
+   Interactive visual dashboards, historical yield trend analysis, and statistical summaries to guide agricultural policies.
 
 ## Tech stack
 
@@ -41,12 +45,14 @@ AGRODATA covers four integrated capabilities as described in the system's capsto
 | Server state | TanStack Query |
 | Charts | Recharts |
 | Backend / DB | Supabase (PostgreSQL, Auth, Storage, Row Level Security) |
+| Server-side logic | Supabase Edge Functions (Deno): `generate-report`, `compute-statistics` |
 
 ## Project structure
 
 ```
 AgroData/
 ├─ supabase/migrations/      # SQL schema, RLS policies, seed data
+├─ supabase/functions/       # Edge Functions (report generation, statistics)
 ├─ src/
 │  ├─ components/ui/         # shadcn/ui primitives
 │  ├─ components/shared/     # layout, sidebar, header, shared widgets
@@ -86,8 +92,26 @@ In the Supabase dashboard, open **SQL Editor** and run, in order:
 3. `supabase/migrations/0003_seed.sql`
 4. `supabase/migrations/0004_require_profile_rls.sql` (locks data access to active OMA profiles)
 5. `supabase/migrations/0005_backup_support.sql` (enables ID-preserving Backup & Restore)
+6. `supabase/migrations/0006_livestock_fisheries.sql` (adds livestock/poultry & fisheries/aquaculture modules)
 
 (Or simply run the all-in-one `supabase/setup_all.sql`, then optionally `supabase/sample_data.sql` for demo data.)
+
+### 4. Deploy the Edge Functions
+
+Report generation (Reports page) and statistical-summary computation (Analytics → "Compute & store") run server-side as Supabase Edge Functions. Deploy them with the Supabase CLI:
+
+```bash
+# One-time: install the CLI and link the project
+npm install -g supabase
+supabase login
+supabase link --project-ref your-project-ref
+
+# Deploy the functions
+supabase functions deploy generate-report
+supabase functions deploy compute-statistics
+```
+
+Both functions require an authenticated user (JWT verification is on) and run queries under the caller's Row Level Security context. For local development you can serve them with `supabase functions serve`.
 
 ### 4. Create the first admin account
 
