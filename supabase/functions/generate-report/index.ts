@@ -6,7 +6,7 @@
 //   quarterly_crop_production | seasonal_farm_inventory
 //   annual_municipal_summary  | farmer_registry
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { createUserClient } from "../_shared/client.ts";
+import { AuthorizationError, createUserClient, requireAdmin } from "../_shared/client.ts";
 
 type ReportType =
   | "quarterly_crop_production"
@@ -62,6 +62,10 @@ Deno.serve(async (req: Request) => {
 
   try {
     const supabase = createUserClient(req);
+    // Reporting is an oversight function: enforce the role here, not only in
+    // the browser router, so the endpoint cannot be called directly by staff.
+    await requireAdmin(supabase);
+
     const { type, from, to } = (await req.json()) as {
       type: ReportType;
       from?: string;
@@ -199,6 +203,9 @@ Deno.serve(async (req: Request) => {
     };
     return jsonResponse(result);
   } catch (err) {
+    if (err instanceof AuthorizationError) {
+      return jsonResponse({ error: err.message }, err.status);
+    }
     const message = err instanceof Error ? err.message : "Report generation failed";
     return jsonResponse({ error: message }, 400);
   }

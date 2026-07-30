@@ -50,7 +50,7 @@ import type { PeriodType } from "@/types/database";
 export default function AnalyticsPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const { profile } = useAuth();
+  const { profile, isAdmin } = useAuth();
   const [periodType, setPeriodType] = React.useState<PeriodType>("YEARLY");
 
   const trend = useQuery({ queryKey: ["yield-trend"], queryFn: fetchYieldTrend });
@@ -179,41 +179,55 @@ export default function AnalyticsPage() {
           <CardHeader>
             <CardTitle>Crop Statistical Summaries</CardTitle>
             <CardDescription>
-              Computed per crop and barangay. The button below recomputes crop, livestock, and
-              fisheries summaries for the selected reporting period.
+              Computed per crop and barangay.{" "}
+              {isAdmin
+                ? "Recomputing refreshes crop, livestock, and fisheries summaries for the selected reporting period."
+                : "Summaries are recomputed by the Municipal Agriculturalist."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Reporting period</Label>
-                <Select value={periodType} onValueChange={(v) => setPeriodType(v as PeriodType)}>
-                  <SelectTrigger className="w-44">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="MONTHLY">Monthly</SelectItem>
-                    <SelectItem value="QUARTERLY">Quarterly</SelectItem>
-                    <SelectItem value="YEARLY">Yearly</SelectItem>
-                  </SelectContent>
-                </Select>
+            {/* Recomputation replaces stored summaries municipality-wide, so it
+                is restricted to the Municipal Agriculturalist and enforced by
+                the compute-statistics Edge Function. */}
+            {isAdmin && (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Reporting period</Label>
+                  <Select value={periodType} onValueChange={(v) => setPeriodType(v as PeriodType)}>
+                    <SelectTrigger className="w-44">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MONTHLY">Monthly</SelectItem>
+                      <SelectItem value="QUARTERLY">Quarterly</SelectItem>
+                      <SelectItem value="YEARLY">Yearly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  onClick={() => computeMutation.mutate()}
+                  disabled={computeMutation.isPending}
+                >
+                  {computeMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Calculator className="h-4 w-4" />
+                  )}
+                  Compute &amp; store
+                </Button>
               </div>
-              <Button onClick={() => computeMutation.mutate()} disabled={computeMutation.isPending}>
-                {computeMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Calculator className="h-4 w-4" />
-                )}
-                Compute &amp; store
-              </Button>
-            </div>
+            )}
 
             {stats.isLoading ? (
               <LoadingState label="Loading summaries…" />
             ) : statRows.length === 0 ? (
               <EmptyState
                 title="No statistics stored yet"
-                description="Choose a period and click Compute & store to generate summaries."
+                description={
+                  isAdmin
+                    ? "Choose a period and click Compute & store to generate summaries."
+                    : "The Municipal Agriculturalist has not generated summaries for this period yet."
+                }
               />
             ) : (
               <div className="overflow-x-auto rounded-md border">
@@ -267,7 +281,11 @@ export default function AnalyticsPage() {
             ) : livestockRows.length === 0 ? (
               <EmptyState
                 title="No livestock statistics stored yet"
-                description="Use Compute & store above to generate summaries."
+                description={
+                  isAdmin
+                    ? "Use Compute & store above to generate summaries."
+                    : "The Municipal Agriculturalist has not generated summaries for this period yet."
+                }
               />
             ) : (
               <div className="overflow-x-auto rounded-md border">
@@ -325,7 +343,11 @@ export default function AnalyticsPage() {
             ) : fisheriesRows.length === 0 ? (
               <EmptyState
                 title="No fisheries statistics stored yet"
-                description="Use Compute & store above to generate summaries."
+                description={
+                  isAdmin
+                    ? "Use Compute & store above to generate summaries."
+                    : "The Municipal Agriculturalist has not generated summaries for this period yet."
+                }
               />
             ) : (
               <div className="overflow-x-auto rounded-md border">

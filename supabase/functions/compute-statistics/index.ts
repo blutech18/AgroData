@@ -3,7 +3,7 @@
 // then persists the summaries into public.yield_statistics (Data Dictionary
 // Table 9). Existing rows of the same period type are replaced.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { createUserClient } from "../_shared/client.ts";
+import { AuthorizationError, createUserClient, requireAdmin } from "../_shared/client.ts";
 
 type PeriodType = "MONTHLY" | "QUARTERLY" | "YEARLY";
 
@@ -48,6 +48,10 @@ Deno.serve(async (req: Request) => {
 
   try {
     const supabase = createUserClient(req);
+    // Recomputing statistics replaces stored summary rows for the whole
+    // municipality, so restrict it to the Municipal Agriculturalist.
+    await requireAdmin(supabase);
+
     const { periodType } = (await req.json()) as { periodType: PeriodType };
 
     const crops = await computeCrops(supabase, periodType);
@@ -56,6 +60,9 @@ Deno.serve(async (req: Request) => {
 
     return jsonResponse({ count: crops + livestock + fisheries, crops, livestock, fisheries });
   } catch (err) {
+    if (err instanceof AuthorizationError) {
+      return jsonResponse({ error: err.message }, err.status);
+    }
     const message = err instanceof Error ? err.message : "Statistics computation failed";
     return jsonResponse({ error: message }, 400);
   }

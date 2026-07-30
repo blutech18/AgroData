@@ -406,12 +406,14 @@ declare
     'fish_catch','aquaculture_sites','aquaculture_cycles'
   ];
 begin
+  -- Same rule as the crop tables: an ACTIVE public.users profile is required,
+  -- not merely an authenticated Supabase identity (see migration 0004/0009).
   foreach t in array sector_tables loop
     execute format($f$
-      create policy "auth_read_%1$s"   on public.%1$s for select using (auth.role() = 'authenticated');
-      create policy "auth_insert_%1$s" on public.%1$s for insert with check (auth.role() = 'authenticated');
-      create policy "auth_update_%1$s" on public.%1$s for update using (auth.role() = 'authenticated');
-      create policy "auth_delete_%1$s" on public.%1$s for delete using (auth.role() = 'authenticated');
+      create policy "auth_read_%1$s"   on public.%1$s for select using (public.has_active_profile());
+      create policy "auth_insert_%1$s" on public.%1$s for insert with check (public.has_active_profile());
+      create policy "auth_update_%1$s" on public.%1$s for update using (public.has_active_profile());
+      create policy "auth_delete_%1$s" on public.%1$s for delete using (public.has_active_profile());
     $f$, t);
   end loop;
 end $$;
@@ -479,10 +481,10 @@ declare
 begin
   foreach t in array stat_tables loop
     execute format($f$
-      create policy "auth_read_%1$s"   on public.%1$s for select using (auth.role() = 'authenticated');
-      create policy "auth_insert_%1$s" on public.%1$s for insert with check (auth.role() = 'authenticated');
-      create policy "auth_update_%1$s" on public.%1$s for update using (auth.role() = 'authenticated');
-      create policy "auth_delete_%1$s" on public.%1$s for delete using (auth.role() = 'authenticated');
+      create policy "auth_read_%1$s"   on public.%1$s for select using (public.has_active_profile());
+      create policy "auth_insert_%1$s" on public.%1$s for insert with check (public.has_active_profile());
+      create policy "auth_update_%1$s" on public.%1$s for update using (public.has_active_profile());
+      create policy "auth_delete_%1$s" on public.%1$s for delete using (public.has_active_profile());
     $f$, t);
   end loop;
 end $$;
