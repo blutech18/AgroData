@@ -6,21 +6,26 @@ import { queryClient } from "@/lib/queryClient";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ToastProvider } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import App from "./App";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
-          <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-            <ToastProvider>
-              <App />
-            </ToastProvider>
-          </ThemeProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
+    {/* Outermost so a failure in any provider or page still renders a
+        recoverable screen rather than a blank page. */}
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <AuthProvider>
+            <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+              <ToastProvider>
+                <App />
+              </ToastProvider>
+            </ThemeProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );

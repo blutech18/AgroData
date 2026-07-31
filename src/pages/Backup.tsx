@@ -141,11 +141,20 @@ export default function BackupPage() {
       <Card className="mt-6 border-amber-200 bg-amber-50/60">
         <CardContent className="flex items-start gap-3 p-4 text-sm text-amber-800">
           <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" />
-          <p>
-            Restoring overwrites records that share the same ID as those in the backup file. This
-            action affects shared data for everyone. Always create a fresh backup before restoring.
-            Note: user login accounts are managed by authentication and are not changed by restore.
-          </p>
+          <div className="space-y-2">
+            <p>
+              Restoring overwrites records that share the same ID as those in the backup file. This
+              action affects shared data for everyone. Always create a fresh backup before restoring.
+              Note: user login accounts are managed by authentication and are not changed by restore.
+            </p>
+            <p>
+              <strong>Handle backup files as confidential.</strong> The file is unencrypted and
+              contains personal information about producers, including names, birthdates, contact
+              numbers, and addresses. Store it only on office-controlled storage, do not send it
+              over personal email or chat, and delete copies you no longer need, consistent with the
+              Data Privacy Act.
+            </p>
+          </div>
         </CardContent>
       </Card>
 

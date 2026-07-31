@@ -109,9 +109,19 @@ supabase link --project-ref your-project-ref
 # Deploy the functions
 supabase functions deploy generate-report
 supabase functions deploy compute-statistics
+supabase functions deploy create-oma-user
 ```
 
-Both functions require an authenticated user (JWT verification is on) and run queries under the caller's Row Level Security context. For local development you can serve them with `supabase functions serve`.
+All three require an authenticated user (JWT verification is on). `generate-report` and
+`compute-statistics` query under the caller's Row Level Security context and additionally verify
+that the caller holds the Municipal Agriculturalist role, so they cannot be invoked by an encoder
+calling the endpoint directly. For local development you can serve them with
+`supabase functions serve`.
+
+`create-oma-user` provisions login accounts and needs the service-role key, which is available to
+deployed functions as `SUPABASE_SERVICE_ROLE_KEY` without any extra configuration. This key must
+never be added to `.env` or referenced from frontend code: it bypasses Row Level Security
+entirely. It is used only inside the function, after the caller's admin role has been verified.
 
 ### 4. Create the first admin account
 
@@ -138,13 +148,23 @@ Open http://localhost:5173 and sign in with the account created above.
 ## Adding more OMA staff
 
 Once you can sign in as the Municipal Agriculturalist, add all other accounts
-directly in the app: go to **User Accounts → Add User**, fill in the name, email,
-username, role, and a temporary password. The account is created and ready to use
-immediately — no dashboard steps required.
+directly in the app: go to **User Accounts → Add User** and fill in the name, email,
+username, and role. The password field is optional:
 
-> Note: If your Supabase project has **Authentication → Email → Confirm email**
-> enabled, new users must confirm their email before signing in. For an internal
-> LGU tool you can disable that setting so accounts work right away.
+- **Leave it blank** to email the user an invitation so they set their own password.
+  Preferred, since an administrator should not know another user's credentials.
+- **Set a temporary password** to make the account usable immediately, for example when
+  onboarding someone in person.
+
+Either way the login account and the OMA profile are created together by the
+`create-oma-user` Edge Function. If profile creation fails, the function removes the
+auth account it just created, so a half-provisioned user is never left behind. Accounts
+created with a password are marked email-confirmed, so the **Confirm email** project
+setting no longer blocks sign-in.
+
+> The invitation option depends on email delivery. Supabase's built-in SMTP is
+> rate-limited and intended for testing; configure **Authentication → SMTP Settings**
+> with the LGU's mail service before relying on invitations in production.
 
 ## Available scripts
 
@@ -166,7 +186,20 @@ immediately — no dashboard steps required.
   with an **active profile** can read/write agricultural data; only the Municipal
   Agriculturalist role can manage user accounts, run Backup/Restore, and view audit logs.
 - The anon key is safe to expose in the browser — access is enforced by RLS.
-- All key actions are written to the `audit_logs` table for monitoring.
+- All key actions are written to the `audit_logs` table for monitoring. The table has no
+  update or delete policy, so entries are append-only.
+- Account provisioning happens server-side in `create-oma-user`; the service-role key stays
+  in the Edge Function environment and is never shipped to the browser.
+- Unhandled UI errors are caught by an error boundary, so a failure shows a recoverable
+  screen rather than a blank page.
+- **Backup files are unencrypted and contain personal data** (producer names, birthdates,
+  contact numbers, addresses). Store them on office-controlled storage only, do not send
+  them over personal email or chat, and delete copies that are no longer needed. The same
+  applies to exported reports.
+- Recommended project settings before go-live: enable **leaked password protection** and
+  set password strength rules under **Authentication → Sign In / Providers → Email**
+  (leaked-password checking requires the Pro plan), and confirm the production URL is in
+  the allowed redirect list so password resets work.
 - Repeated failed logins are locked client-side after 3 attempts, on top of
   Supabase's server-side auth rate limiting.
 

@@ -1,4 +1,3 @@
-import { createClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import type { AppUser, UserRole } from "@/types/database";
 
@@ -63,57 +62,49 @@ export async function setUserStatus(id: number, status: "ACTIVE" | "INACTIVE") {
 }
 
 export interface NewUserInput extends UserProfileInput {
-  password: string;
+  /**
+   * Optional. Leave empty to email the user an invitation so they choose their
+   * own password, which is preferable to an administrator setting it for them.
+   */
+  password?: string;
+}
+
+export interface CreatedUser {
+  user: AppUser;
+  /** True when an invitation email was sent instead of setting a password. */
+  invited: boolean;
 }
 
 /**
- * Isolated auth client used only for creating accounts. It uses a distinct
- * storage key and does not persist a session, so it never overwrites or shares
- * state with the main (admin) client.
- */
-const accountCreationClient = createClient(
-  import.meta.env.VITE_SUPABASE_URL as string,
-  import.meta.env.VITE_SUPABASE_ANON_KEY as string,
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      storageKey: "agrodata-account-creation",
-    },
-  }
-);
-
-/**
- * Creates a new OMA login account and its linked profile in one step.
+ * Creates an OMA login account and its linked profile via the `create-oma-user`
+ * Edge Function.
  *
- * The sign-up runs on an isolated Supabase client so the current administrator's
- * session is never replaced. The profile row is then inserted using the admin's
- * authenticated client, so the admin-only RLS policy on public.users is satisfied.
+ * This runs server-side because it needs the Auth admin API: the function
+ * creates the account, links the profile, and deletes the account again if
+ * linking fails, so a half-provisioned user cannot be left behind. It also
+ * avoids client-side signUp, which would leave the account unconfirmed whenever
+ * email confirmation is enabled on the project.
  */
-export async function createUserAccount(input: NewUserInput): Promise<AppUser> {
-  const { data: signUp, error: signUpError } = await accountCreationClient.auth.signUp({
-    email: input.email,
-    password: input.password,
-  });
-  if (signUpError) throw signUpError;
-
-  const authId = signUp.user?.id;
-  if (!authId) {
-    throw new Error("The authentication account could not be created.");
-  }
-
-  const { data, error } = await supabase
-    .from("users")
-    .insert({
-      auth_id: authId,
-      role_id: input.role_id,
-      first_name: input.first_name,
-      last_name: input.last_name,
+export async function createUserAccount(input: NewUserInput): Promise<CreatedUser> {
+  const { data, error } = await supabase.functions.invoke("create-oma-user", {
+    body: {
       email: input.email,
       username: input.username,
-    })
-    .select("*, user_roles(*)")
-    .single();
-  if (error) throw error;
-  return data as AppUser;
+      first_name: input.first_name,
+      last_name: input.last_name,
+      role_id: input.role_id,
+      ...(input.password ? { password: input.password } : {}),
+    },
+  });
+
+  // Edge Function errors carry the useful message in the response body.
+  if (error) {
+    const detail = (data as { error?: string } | null)?.error;
+    throw new Error(detail ?? error.message);
+  }
+  if ((data as { error?: string } | null)?.error) {
+    throw new Error((data as { error: string }).error);
+  }
+
+  return data as CreatedUser;
 }

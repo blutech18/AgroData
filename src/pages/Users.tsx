@@ -90,7 +90,7 @@ export default function UsersPage() {
 
   const createMutation = useMutation({
     mutationFn: () => createUserAccount(form),
-    onSuccess: async (saved) => {
+    onSuccess: async ({ user: saved, invited }) => {
       await logActivity({
         userId: profile?.user_id ?? null,
         action: "CREATE_USER",
@@ -98,7 +98,13 @@ export default function UsersPage() {
         entityId: saved.user_id,
         details: saved.username,
       });
-      toast({ title: "Account created", description: `${saved.first_name} can now sign in.`, variant: "success" });
+      toast({
+        title: "Account created",
+        description: invited
+          ? `An invitation email was sent to ${saved.email}.`
+          : `${saved.first_name} can now sign in.`,
+        variant: "success",
+      });
       setCreateOpen(false);
       invalidate();
     },
@@ -355,7 +361,8 @@ export default function UsersPage() {
           <DialogHeader>
             <DialogTitle>Add User</DialogTitle>
             <DialogDescription>
-              Creates a login account. The user signs in with the email and password set below.
+              Creates the login account and its OMA profile together. Leave the password blank to
+              email an invitation so the user sets their own password.
             </DialogDescription>
           </DialogHeader>
           <form
@@ -371,19 +378,20 @@ export default function UsersPage() {
           >
             {profileFields}
             <div className="space-y-2">
-              <Label htmlFor="pw">Temporary password</Label>
+              <Label htmlFor="pw">Temporary password (optional)</Label>
               <Input
                 id="pw"
                 type="password"
-                required
-                minLength={6}
+                minLength={8}
                 autoComplete="new-password"
-                placeholder="At least 6 characters"
+                placeholder="Leave blank to send an invitation email"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
               />
               <p className="text-xs text-muted-foreground">
-                Share this with the user; they can change it later.
+                {form.password
+                  ? "Share this with the user; they can change it later."
+                  : "The user will receive an email invitation and choose their own password."}
               </p>
             </div>
             <DialogFooter>
