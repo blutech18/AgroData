@@ -14,7 +14,55 @@ type ReportType =
   | "annual_municipal_summary"
   | "livestock_inventory"
   | "fisheries_catch"
+  | "aquaculture_summary"
   | "farmer_registry";
+
+const REPORT_TYPES: readonly ReportType[] = [
+  "quarterly_crop_production",
+  "seasonal_farm_inventory",
+  "annual_municipal_summary",
+  "livestock_inventory",
+  "fisheries_catch",
+  "aquaculture_summary",
+  "farmer_registry",
+];
+
+/** Raised for malformed/invalid request input; surfaced to the caller as 400. */
+class BadRequestError extends Error {}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function validateDate(value: unknown, field: string): string | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value !== "string" || !ISO_DATE.test(value) || Number.isNaN(Date.parse(value))) {
+    throw new BadRequestError(`"${field}" must be a valid YYYY-MM-DD date.`);
+  }
+  return value;
+}
+
+/** Parses and validates the report request body. */
+async function parseReportRequest(
+  req: Request
+): Promise<{ type: ReportType; from?: string; to?: string }> {
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    throw new BadRequestError("Request body must be valid JSON.");
+  }
+  const raw = (body ?? {}) as { type?: unknown; from?: unknown; to?: unknown };
+  if (typeof raw.type !== "string" || !REPORT_TYPES.includes(raw.type as ReportType)) {
+    throw new BadRequestError(
+      `"type" is required and must be one of: ${REPORT_TYPES.join(", ")}.`
+    );
+  }
+  const from = validateDate(raw.from, "from");
+  const to = validateDate(raw.to, "to");
+  if (from && to && from > to) {
+    throw new BadRequestError('"from" must not be later than "to".');
+  }
+  return { type: raw.type as ReportType, from, to };
+}
 
 interface ReportColumn {
   key: string;
@@ -66,11 +114,7 @@ Deno.serve(async (req: Request) => {
     // the browser router, so the endpoint cannot be called directly by staff.
     await requireAdmin(supabase);
 
-    const { type, from, to } = (await req.json()) as {
-      type: ReportType;
-      from?: string;
-      to?: string;
-    };
+    const { type, from, to } = await parseReportRequest(req);
 
     const generatedAt = new Date().toISOString();
     const period = periodLabel(from, to);
@@ -113,6 +157,10 @@ Deno.serve(async (req: Request) => {
 
     if (type === "fisheries_catch") {
       return jsonResponse(await fisheriesCatch(supabase, generatedAt, period, from, to));
+    }
+
+    if (type === "aquaculture_summary") {
+      return jsonResponse(await aquacultureSummary(supabase, generatedAt, period, from, to));
     }
 
     // quarterly_crop_production + annual_municipal_summary aggregate harvest data.
@@ -206,6 +254,9 @@ Deno.serve(async (req: Request) => {
     if (err instanceof AuthorizationError) {
       return jsonResponse({ error: err.message }, err.status);
     }
+    if (err instanceof BadRequestError) {
+      return jsonResponse({ error: err.message }, 400);
+    }
     const message = err instanceof Error ? err.message : "Report generation failed";
     return jsonResponse({ error: message }, 400);
   }
@@ -288,12 +339,28 @@ async function seasonalFarmInventory(
 
 interface LivestockRow {
   record_date: string;
+  farmer_id: number;
+  barangay: string | null;
   inventory_count: number;
   births: number;
   deaths: number;
   disposed: number;
   production_qty: number | null;
+  production_unit: string | null;
   livestock_species: { species_name: string; category: string } | null;
+}
+
+/**
+ * Renders a unit-keyed production map as a human-readable breakdown, e.g.
+ * "1,250 kg; 40 trays". Summing quantities across different units would be
+ * meaningless, so each unit is totalled and reported separately.
+ */
+function formatProduction(byUnit: Map<string, number>): string {
+  const parts = [...byUnit.entries()]
+    .filter(([, qty]) => qty > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([unit, qty]) => `${round(qty).toLocaleString("en-US")} ${unit}`);
+  return parts.length > 0 ? parts.join("; ") : "—";
 }
 
 // deno-lint-ignore no-explicit-any
@@ -307,7 +374,7 @@ async function livestockInventory(
   const { data, error } = await supabase
     .from("livestock_records")
     .select(
-      "record_date, inventory_count, births, deaths, disposed, production_qty, livestock_species(species_name, category)"
+      "record_date, farmer_id, barangay, inventory_count, births, deaths, disposed, production_qty, production_unit, livestock_species(species_name, category)"
     );
   if (error) throw error;
 
@@ -318,11 +385,14 @@ async function livestockInventory(
   interface Agg {
     category: string;
     species: string;
-    inventory: number;
     births: number;
     deaths: number;
     disposed: number;
-    production: number;
+    // Production is unit-sensitive; keep a per-unit total instead of one sum.
+    productionByUnit: Map<string, number>;
+    // Inventory is a stock; keep the latest snapshot per holding (producer +
+    // barangay) within range so repeated snapshots are not double-counted.
+    latestByHolding: Map<string, { date: string; inventory: number }>;
   }
   const map = new Map<string, Agg>();
   for (const r of rows) {
@@ -330,12 +400,31 @@ async function livestockInventory(
     const category = r.livestock_species?.category ?? "—";
     const cur =
       map.get(species) ??
-      { category, species, inventory: 0, births: 0, deaths: 0, disposed: 0, production: 0 };
-    cur.inventory += Number(r.inventory_count ?? 0);
+      {
+        category,
+        species,
+        births: 0,
+        deaths: 0,
+        disposed: 0,
+        productionByUnit: new Map<string, number>(),
+        latestByHolding: new Map<string, { date: string; inventory: number }>(),
+      };
     cur.births += Number(r.births ?? 0);
     cur.deaths += Number(r.deaths ?? 0);
     cur.disposed += Number(r.disposed ?? 0);
-    cur.production += Number(r.production_qty ?? 0);
+    const qty = Number(r.production_qty ?? 0);
+    if (qty > 0) {
+      const unit = (r.production_unit ?? "").trim() || "unit";
+      cur.productionByUnit.set(unit, (cur.productionByUnit.get(unit) ?? 0) + qty);
+    }
+    const holdingKey = `${r.farmer_id}|${r.barangay ?? ""}`;
+    const prev = cur.latestByHolding.get(holdingKey);
+    if (!prev || r.record_date > prev.date) {
+      cur.latestByHolding.set(holdingKey, {
+        date: r.record_date,
+        inventory: Number(r.inventory_count ?? 0),
+      });
+    }
     map.set(species, cur);
   }
 
@@ -345,21 +434,21 @@ async function livestockInventory(
     columns: [
       { key: "category", label: "Category" },
       { key: "species", label: "Species" },
-      { key: "inventory", label: "Inventory (recorded)", numeric: true },
+      { key: "inventory", label: "Inventory (current)", numeric: true },
       { key: "births", label: "Births", numeric: true },
       { key: "deaths", label: "Deaths", numeric: true },
       { key: "disposed", label: "Disposed", numeric: true },
-      { key: "production", label: "Production", numeric: true },
+      { key: "production", label: "Production" },
     ],
     rows: [...map.values()]
       .map((a) => ({
         category: a.category,
         species: a.species,
-        inventory: a.inventory,
+        inventory: [...a.latestByHolding.values()].reduce((sum, v) => sum + v.inventory, 0),
         births: a.births,
         deaths: a.deaths,
         disposed: a.disposed,
-        production: round(a.production),
+        production: formatProduction(a.productionByUnit),
       }))
       .sort(
         (a, b) =>
@@ -398,12 +487,15 @@ async function fisheriesCatch(
   const label = (s: string) =>
     s === "MARINE_MUNICIPAL" ? "Marine (municipal)" : "Inland (municipal)";
 
+  // Key by unit as well as subsector + species: catch recorded in different
+  // units (e.g. kg vs. pieces) must not be summed into one meaningless total.
   const map = new Map<string, { subsector: string; species: string; quantity: number; unit: string }>();
   for (const r of rows) {
-    const key = `${r.subsector}|${r.species_name}`;
+    const unit = (r.unit ?? "").trim() || "kg";
+    const key = `${r.subsector}|${r.species_name}|${unit}`;
     const cur =
       map.get(key) ??
-      { subsector: label(r.subsector), species: r.species_name, quantity: 0, unit: r.unit ?? "kg" };
+      { subsector: label(r.subsector), species: r.species_name, quantity: 0, unit };
     cur.quantity += Number(r.quantity ?? 0);
     map.set(key, cur);
   }
@@ -428,6 +520,98 @@ async function fisheriesCatch(
         (a, b) =>
           String(a.subsector).localeCompare(String(b.subsector)) ||
           (b.quantity as number) - (a.quantity as number)
+      ),
+    generatedAt,
+  };
+}
+
+interface AquaSummaryRow {
+  species_name: string;
+  unit: string | null;
+  status: string;
+  stocking_date: string;
+  stocking_qty: number | null;
+  harvest_qty: number | null;
+  aquaculture_sites: { site_type: string | null } | null;
+}
+
+// deno-lint-ignore no-explicit-any
+async function aquacultureSummary(
+  supabase: any,
+  generatedAt: string,
+  period: string,
+  from?: string,
+  to?: string
+): Promise<ReportResult> {
+  const { data, error } = await supabase
+    .from("aquaculture_cycles")
+    .select(
+      "species_name, unit, status, stocking_date, stocking_qty, harvest_qty, aquaculture_sites(site_type)"
+    );
+  if (error) throw error;
+
+  // Filter by stocking-date period (cycles are reported by stocking cohort).
+  const rows = ((data ?? []) as unknown as AquaSummaryRow[]).filter((r) =>
+    withinRange(r.stocking_date, from, to)
+  );
+
+  interface Agg {
+    siteType: string;
+    species: string;
+    unit: string;
+    stocked: number;
+    harvested: number;
+    active: number;
+    harvestedCycles: number;
+    lost: number;
+  }
+  // Group by site type + species + unit so quantities in different units are
+  // never merged into one figure.
+  const map = new Map<string, Agg>();
+  for (const r of rows) {
+    const siteType = r.aquaculture_sites?.site_type ?? "—";
+    const species = (r.species_name ?? "").trim() || "Unspecified";
+    const unit = (r.unit ?? "").trim() || "kg";
+    const key = `${siteType}|${species}|${unit}`;
+    const cur =
+      map.get(key) ??
+      { siteType, species, unit, stocked: 0, harvested: 0, active: 0, harvestedCycles: 0, lost: 0 };
+    cur.stocked += Number(r.stocking_qty ?? 0);
+    cur.harvested += Number(r.harvest_qty ?? 0);
+    if (r.status === "HARVESTED") cur.harvestedCycles += 1;
+    else if (r.status === "LOST") cur.lost += 1;
+    else cur.active += 1;
+    map.set(key, cur);
+  }
+
+  return {
+    title: "Aquaculture Stocking and Harvest Summary",
+    subtitle: `OMA Kinoguitan · ${period}`,
+    columns: [
+      { key: "siteType", label: "Site Type" },
+      { key: "species", label: "Species" },
+      { key: "stocked", label: "Total Stocked", numeric: true },
+      { key: "harvested", label: "Total Harvested", numeric: true },
+      { key: "unit", label: "Unit" },
+      { key: "active", label: "Active", numeric: true },
+      { key: "harvestedCycles", label: "Harvested", numeric: true },
+      { key: "lost", label: "Lost", numeric: true },
+    ],
+    rows: [...map.values()]
+      .map((v) => ({
+        siteType: v.siteType,
+        species: v.species,
+        stocked: round(v.stocked),
+        harvested: round(v.harvested),
+        unit: v.unit,
+        active: v.active,
+        harvestedCycles: v.harvestedCycles,
+        lost: v.lost,
+      }))
+      .sort(
+        (a, b) =>
+          String(a.siteType).localeCompare(String(b.siteType)) ||
+          String(a.species).localeCompare(String(b.species))
       ),
     generatedAt,
   };

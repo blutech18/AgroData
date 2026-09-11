@@ -40,6 +40,7 @@ import {
   createFisherfolk,
   deleteFisherfolk,
   fetchFisherfolk,
+  fetchRegisteredFisherfolkFarmerIds,
   updateFisherfolk,
   type FisherfolkInput,
 } from "@/features/fisheries";
@@ -82,8 +83,24 @@ export default function FisherfolkPage() {
     placeholderData: keepPreviousData,
   });
   const farmers = useQuery({ queryKey: ["farmer-options"], queryFn: fetchFarmerOptions });
+  const registeredIds = useQuery({
+    queryKey: ["fisherfolk-registered-ids"],
+    queryFn: fetchRegisteredFisherfolkFarmerIds,
+  });
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["fisherfolk"] });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["fisherfolk"] });
+    qc.invalidateQueries({ queryKey: ["fisherfolk-registered-ids"] });
+  };
+
+  // In create mode, hide producers that already have a profile (one per
+  // producer). When editing, keep the current producer selectable.
+  const producerOptions = React.useMemo(() => {
+    const taken = new Set(registeredIds.data ?? []);
+    return (farmers.data ?? []).filter(
+      (f) => !taken.has(f.farmer_id) || f.farmer_id === editing?.farmer_id
+    );
+  }, [farmers.data, registeredIds.data, editing]);
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const rows = data?.rows ?? [];
@@ -251,17 +268,31 @@ export default function FisherfolkPage() {
               <Label>Producer</Label>
               <Select
                 value={form.farmer_id ? String(form.farmer_id) : ""}
-                onValueChange={(v) => setForm({ ...form, farmer_id: Number(v) })}
+                onValueChange={(v) => {
+                  const fid = Number(v);
+                  const picked = producerOptions.find((f) => f.farmer_id === fid);
+                  setForm((prev) => ({
+                    ...prev,
+                    farmer_id: fid,
+                    barangay: prev.barangay.trim() ? prev.barangay : picked?.barangay ?? "",
+                  }));
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select producer" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(farmers.data ?? []).map((f) => (
-                    <SelectItem key={f.farmer_id} value={String(f.farmer_id)}>
-                      {f.last_name}, {f.first_name}
-                    </SelectItem>
-                  ))}
+                  {producerOptions.length === 0 ? (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      All producers already have a profile.
+                    </div>
+                  ) : (
+                    producerOptions.map((f) => (
+                      <SelectItem key={f.farmer_id} value={String(f.farmer_id)}>
+                        {f.last_name}, {f.first_name}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>

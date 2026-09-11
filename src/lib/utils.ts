@@ -13,6 +13,13 @@ export function formatNumber(value: number | null | undefined, fractionDigits = 
   }).format(value);
 }
 
+/** Today's date as a local `YYYY-MM-DD` string (matches <input type="date"> values). */
+export function todayISO() {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export function formatDate(value: string | null | undefined) {
   if (!value) return "—";
   const d = new Date(value);

@@ -93,8 +93,24 @@ In the Supabase dashboard, open **SQL Editor** and run, in order:
 4. `supabase/migrations/0004_require_profile_rls.sql` (locks data access to active OMA profiles)
 5. `supabase/migrations/0005_backup_support.sql` (enables ID-preserving Backup & Restore)
 6. `supabase/migrations/0006_livestock_fisheries.sql` (adds livestock/poultry & fisheries/aquaculture modules)
+7. `supabase/migrations/0007_sector_statistics.sql` (adds `livestock_statistics` & `fisheries_statistics`; **required** for the Analytics page)
+8. `supabase/migrations/0008_backup_sector_support.sql` (includes the sector tables in Backup & Restore)
+9. `supabase/migrations/0009_sector_rls_hardening.sql` (**security**: requires an active OMA profile for the sector tables, matching the crop tables)
+10. `supabase/migrations/0010_function_execute_hardening.sql` (**security**: revokes anon/PUBLIC EXECUTE on definer helpers; re-checks admin inside `resync_identity_sequences`)
+11. `supabase/migrations/0011_revoke_role_name_execute.sql` (**security**: removes the last unnecessary role grant)
+12. `supabase/migrations/0012_aquaculture_statistics.sql` (adds `aquaculture_statistics` for the Analytics aquaculture summaries and the Aquaculture Stocking & Harvest report)
+13. `supabase/migrations/0013_statistics_unit_and_txn.sql` (adds unit-aware fisheries stats and a transactional recompute function)
+14. `supabase/migrations/0014_reference_catalogs.sql` (adds admin-managed `measurement_units` and `aquatic_species` catalogs used by the sector forms)
 
-(Or simply run the all-in-one `supabase/setup_all.sql`, then optionally `supabase/sample_data.sql` for demo data.)
+> Run **all** migrations through `0014`. Stopping early leaves the Analytics page
+> without its statistics tables (migrations 0007, 0012–0013) and leaves the sector tables
+> reachable by any authenticated account with no OMA profile (migrations 0009–0011 close this).
+> Migration `0014` adds the reference catalogs the sector forms use for units and species.
+
+(Or simply run the all-in-one `supabase/setup_all.sql`, which already includes the
+`0009` active-profile policies for the sector tables, then optionally
+`supabase/sample_data.sql` for demo data. If you use `setup_all.sql`, still apply
+migrations `0010` and `0011` afterward for the function-execute hardening.)
 
 ### 4. Deploy the Edge Functions
 

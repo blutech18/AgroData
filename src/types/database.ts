@@ -225,10 +225,46 @@ export interface FisheriesStatistic {
   stat_id: number;
   subsector: FisheriesSubsector;
   species_name: string;
+  unit: string;
   period_type: PeriodType;
   period_start: string;
   period_end: string;
   total_catch: number | null;
   catch_records: number | null;
   computed_at: string;
+}
+
+export interface AquacultureStatistic {
+  stat_id: number;
+  species_name: string;
+  site_type: AquaSiteType | null;
+  unit: string;
+  period_type: PeriodType;
+  period_start: string;
+  period_end: string;
+  total_stocked: number | null;
+  total_harvested: number | null;
+  active_cycles: number | null;
+  harvested_cycles: number | null;
+  lost_cycles: number | null;
+  computed_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Reference catalogs (migration 0014): controlled measurement units and
+// aquatic species used to replace free-text entry in the sector forms.
+// ---------------------------------------------------------------------------
+
+export interface MeasurementUnit {
+  unit_id: number;
+  unit_name: string;
+  dimension: string | null;
+  active: boolean;
+}
+
+export interface AquaticSpecies {
+  aqua_species_id: number;
+  common_name: string;
+  scientific_name: string | null;
+  active: boolean;
 }

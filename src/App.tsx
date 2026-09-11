@@ -21,6 +21,7 @@ import AquacultureSitesPage from "@/pages/AquacultureSites";
 import AquacultureCyclesPage from "@/pages/AquacultureCycles";
 import AnalyticsPage from "@/pages/Analytics";
 import ReportsPage from "@/pages/Reports";
+import ReferenceDataPage from "@/pages/ReferenceData";
 import UsersPage from "@/pages/Users";
 import BackupPage from "@/pages/Backup";
 import AuditLogsPage from "@/pages/AuditLogs";
@@ -83,6 +84,14 @@ export default function App() {
           element={
             <RequireAdmin>
               <ReportsPage />
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path="/reference-data"
+          element={
+            <RequireAdmin>
+              <ReferenceDataPage />
             </RequireAdmin>
           }
         />

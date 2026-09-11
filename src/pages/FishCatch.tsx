@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { CatalogSelect } from "@/components/shared/CatalogSelect";
 import { LoadingState, EmptyState, ErrorState } from "@/components/shared/states";
 import { RowActions } from "@/components/shared/RowActions";
 import { TablePagination } from "@/components/shared/TablePagination";
@@ -43,8 +44,10 @@ import {
   fetchFishCatch,
   fetchFisherfolkOptions,
   updateFishCatch,
+  validateFishCatch,
   type FishCatchInput,
 } from "@/features/fisheries";
+import { fetchAquaticSpeciesOptions, fetchUnitOptions } from "@/features/reference";
 import type { FishCatch, FisheriesSubsector } from "@/types/database";
 
 const emptyForm: FishCatchInput = {
@@ -66,6 +69,10 @@ export default function FishCatchPage() {
   const { profile } = useAuth();
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
+  const [subsectorFilter, setSubsectorFilter] = React.useState("ALL");
+  const [speciesFilter, setSpeciesFilter] = React.useState("ALL");
+  const [fromDate, setFromDate] = React.useState("");
+  const [toDate, setToDate] = React.useState("");
   const [page, setPage] = React.useState(1);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<FishCatch | null>(null);
@@ -80,17 +87,34 @@ export default function FishCatchPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  React.useEffect(() => setPage(1), [subsectorFilter, speciesFilter, fromDate, toDate]);
+
   const PAGE_SIZE = 12;
 
+  const filters = React.useMemo(
+    () => ({
+      subsector: subsectorFilter === "ALL" ? undefined : (subsectorFilter as FisheriesSubsector),
+      species: speciesFilter === "ALL" ? undefined : speciesFilter,
+      from: fromDate || undefined,
+      to: toDate || undefined,
+    }),
+    [subsectorFilter, speciesFilter, fromDate, toDate]
+  );
+
   const { data, isLoading, isError, isFetching } = useQuery({
-    queryKey: ["fish-catch", debounced, page],
-    queryFn: () => fetchFishCatch(debounced, page, PAGE_SIZE),
+    queryKey: ["fish-catch", debounced, page, filters],
+    queryFn: () => fetchFishCatch(debounced, page, PAGE_SIZE, filters),
     placeholderData: keepPreviousData,
   });
   const fisherfolk = useQuery({
     queryKey: ["fisherfolk-options"],
     queryFn: fetchFisherfolkOptions,
   });
+  const speciesOptions = useQuery({
+    queryKey: ["aquatic-species-options"],
+    queryFn: fetchAquaticSpeciesOptions,
+  });
+  const unitOptions = useQuery({ queryKey: ["unit-options"], queryFn: fetchUnitOptions });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["fish-catch"] });
   const total = data?.total ?? 0;
@@ -173,14 +197,86 @@ export default function FishCatchPage() {
         </Button>
       </PageHeader>
 
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search species…"
-          className="pl-9"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search species…"
+            className="pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search species"
+          />
+        </div>
+        <div className="w-full sm:w-52">
+          <Select value={subsectorFilter} onValueChange={setSubsectorFilter}>
+            <SelectTrigger aria-label="Filter by subsector">
+              <SelectValue placeholder="All subsectors" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All subsectors</SelectItem>
+              <SelectItem value="MARINE_MUNICIPAL">Marine (municipal)</SelectItem>
+              <SelectItem value="INLAND_MUNICIPAL">Inland (municipal)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-full sm:w-48">
+          <Select value={speciesFilter} onValueChange={setSpeciesFilter}>
+            <SelectTrigger aria-label="Filter by species">
+              <SelectValue placeholder="All species" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All species</SelectItem>
+              {(speciesOptions.data ?? []).map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-end gap-2">
+          <div className="space-y-1">
+            <Label htmlFor="from-date" className="text-xs text-muted-foreground">
+              From
+            </Label>
+            <Input
+              id="from-date"
+              type="date"
+              className="w-full sm:w-40"
+              value={fromDate}
+              max={toDate || undefined}
+              onChange={(e) => setFromDate(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="to-date" className="text-xs text-muted-foreground">
+              To
+            </Label>
+            <Input
+              id="to-date"
+              type="date"
+              className="w-full sm:w-40"
+              value={toDate}
+              min={fromDate || undefined}
+              onChange={(e) => setToDate(e.target.value)}
+            />
+          </div>
+          {(subsectorFilter !== "ALL" || speciesFilter !== "ALL" || fromDate || toDate) && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setSubsectorFilter("ALL");
+                setSpeciesFilter("ALL");
+                setFromDate("");
+                setToDate("");
+              }}
+            >
+              Clear
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card>
@@ -258,6 +354,11 @@ export default function FishCatchPage() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              const problem = validateFishCatch(form);
+              if (problem) {
+                toast({ title: "Check the catch record", description: problem, variant: "error" });
+                return;
+              }
               saveMutation.mutate();
             }}
             className="space-y-4"
@@ -311,12 +412,13 @@ export default function FishCatchPage() {
 
             <div className="space-y-2">
               <Label htmlFor="species_name">Species</Label>
-              <Input
+              <CatalogSelect
                 id="species_name"
-                required
-                placeholder="e.g. Tilapia, Bangus, Tuna"
+                ariaLabel="Species"
+                placeholder="Select species"
+                options={speciesOptions.data ?? []}
                 value={form.species_name}
-                onChange={(e) => setForm({ ...form, species_name: e.target.value })}
+                onChange={(v) => setForm({ ...form, species_name: v })}
               />
             </div>
 
@@ -337,11 +439,13 @@ export default function FishCatchPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="unit">Unit</Label>
-                <Input
+                <CatalogSelect
                   id="unit"
-                  required
+                  ariaLabel="Unit"
+                  placeholder="Select unit"
+                  options={unitOptions.data ?? []}
                   value={form.unit}
-                  onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                  onChange={(v) => setForm({ ...form, unit: v })}
                 />
               </div>
             </div>

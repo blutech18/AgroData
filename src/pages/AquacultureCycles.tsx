@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { CatalogSelect } from "@/components/shared/CatalogSelect";
 import { LoadingState, EmptyState, ErrorState } from "@/components/shared/states";
 import { RowActions } from "@/components/shared/RowActions";
 import { TablePagination } from "@/components/shared/TablePagination";
@@ -43,8 +44,10 @@ import {
   fetchAquacultureCycles,
   fetchAquacultureSiteOptions,
   updateAquacultureCycle,
+  validateAquacultureCycle,
   type AquacultureCycleInput,
 } from "@/features/aquaculture";
+import { fetchAquaticSpeciesOptions, fetchUnitOptions } from "@/features/reference";
 import type { AquaCycleStatus, AquacultureCycle } from "@/types/database";
 
 const emptyForm: AquacultureCycleInput = {
@@ -66,6 +69,8 @@ export default function AquacultureCyclesPage() {
   const { profile } = useAuth();
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState("ALL");
+  const [speciesFilter, setSpeciesFilter] = React.useState("ALL");
   const [page, setPage] = React.useState(1);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<AquacultureCycle | null>(null);
@@ -80,14 +85,29 @@ export default function AquacultureCyclesPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  React.useEffect(() => setPage(1), [statusFilter, speciesFilter]);
+
   const PAGE_SIZE = 12;
 
+  const filters = React.useMemo(
+    () => ({
+      status: statusFilter === "ALL" ? undefined : (statusFilter as AquaCycleStatus),
+      species: speciesFilter === "ALL" ? undefined : speciesFilter,
+    }),
+    [statusFilter, speciesFilter]
+  );
+
   const { data, isLoading, isError, isFetching } = useQuery({
-    queryKey: ["aqua-cycles", debounced, page],
-    queryFn: () => fetchAquacultureCycles(debounced, page, PAGE_SIZE),
+    queryKey: ["aqua-cycles", debounced, page, filters],
+    queryFn: () => fetchAquacultureCycles(debounced, page, PAGE_SIZE, filters),
     placeholderData: keepPreviousData,
   });
   const sites = useQuery({ queryKey: ["aqua-site-options"], queryFn: fetchAquacultureSiteOptions });
+  const speciesOptions = useQuery({
+    queryKey: ["aquatic-species-options"],
+    queryFn: fetchAquaticSpeciesOptions,
+  });
+  const unitOptions = useQuery({ queryKey: ["unit-options"], queryFn: fetchUnitOptions });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["aqua-cycles"] });
   const total = data?.total ?? 0;
@@ -169,14 +189,47 @@ export default function AquacultureCyclesPage() {
         </Button>
       </PageHeader>
 
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search species…"
-          className="pl-9"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search species…"
+            className="pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search species"
+          />
+        </div>
+        <div className="w-full sm:w-44">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger aria-label="Filter by status">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All statuses</SelectItem>
+              {STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-full sm:w-48">
+          <Select value={speciesFilter} onValueChange={setSpeciesFilter}>
+            <SelectTrigger aria-label="Filter by species">
+              <SelectValue placeholder="All species" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All species</SelectItem>
+              {(speciesOptions.data ?? []).map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <Card>
@@ -259,6 +312,11 @@ export default function AquacultureCyclesPage() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              const problem = validateAquacultureCycle(form);
+              if (problem) {
+                toast({ title: "Check the cycle", description: problem, variant: "error" });
+                return;
+              }
               saveMutation.mutate();
             }}
             className="space-y-4"
@@ -285,12 +343,13 @@ export default function AquacultureCyclesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="species_name">Species</Label>
-                <Input
+                <CatalogSelect
                   id="species_name"
-                  required
-                  placeholder="e.g. Tilapia, Bangus"
+                  ariaLabel="Species"
+                  placeholder="Select species"
+                  options={speciesOptions.data ?? []}
                   value={form.species_name}
-                  onChange={(e) => setForm({ ...form, species_name: e.target.value })}
+                  onChange={(v) => setForm({ ...form, species_name: v })}
                 />
               </div>
               <div className="space-y-2">
@@ -372,11 +431,13 @@ export default function AquacultureCyclesPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="unit">Unit</Label>
-                <Input
+                <CatalogSelect
                   id="unit"
-                  required
+                  ariaLabel="Unit"
+                  placeholder="Select unit"
+                  options={unitOptions.data ?? []}
                   value={form.unit}
-                  onChange={(e) => setForm({ ...form, unit: e.target.value })}
+                  onChange={(v) => setForm({ ...form, unit: v })}
                 />
               </div>
             </div>

@@ -21,7 +21,7 @@ describe("backup table coverage", () => {
     expect(new Set(TABLES).size).toBe(TABLES.length);
   });
 
-  it("covers every sector table added by migrations 0006 and 0007", () => {
+  it("covers every sector table added by migrations 0006, 0007, and 0012", () => {
     const required = [
       "livestock_species",
       "livestock_records",
@@ -31,9 +31,16 @@ describe("backup table coverage", () => {
       "aquaculture_cycles",
       "livestock_statistics",
       "fisheries_statistics",
+      "aquaculture_statistics",
     ];
     for (const table of required) {
       expect(TABLES, `sector table "${table}" is not backed up`).toContain(table);
+    }
+  });
+
+  it("covers the reference catalogs added by migration 0014", () => {
+    for (const table of ["measurement_units", "aquatic_species"]) {
+      expect(TABLES, `reference catalog "${table}" is not backed up`).toContain(table);
     }
   });
 

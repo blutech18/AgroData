@@ -6,6 +6,8 @@ import { supabase } from "@/lib/supabase";
 export const TABLES = [
   "user_roles",
   "users",
+  "measurement_units",
+  "aquatic_species",
   "farmers",
   "crops",
   "farms",
@@ -21,6 +23,7 @@ export const TABLES = [
   "aquaculture_cycles",
   "livestock_statistics",
   "fisheries_statistics",
+  "aquaculture_statistics",
   "audit_logs",
 ] as const;
 
@@ -29,6 +32,8 @@ export type TableName = (typeof TABLES)[number];
 export const PK: Record<TableName, string> = {
   user_roles: "role_id",
   users: "user_id",
+  measurement_units: "unit_id",
+  aquatic_species: "aqua_species_id",
   farmers: "farmer_id",
   crops: "crop_id",
   farms: "farm_id",
@@ -44,6 +49,7 @@ export const PK: Record<TableName, string> = {
   aquaculture_cycles: "cycle_id",
   livestock_statistics: "stat_id",
   fisheries_statistics: "stat_id",
+  aquaculture_statistics: "stat_id",
   audit_logs: "log_id",
 };
 
@@ -51,9 +57,11 @@ export const PK: Record<TableName, string> = {
  * Backup format version.
  *  1 = crop-era tables only.
  *  2 = adds livestock/poultry, fisheries, aquaculture, and sector statistics.
- * Version 1 files still restore: absent tables are simply reported as 0 rows.
+ *  3 = adds aquaculture_statistics (migration 0012).
+ *  4 = adds measurement_units and aquatic_species catalogs (migration 0014).
+ * Older files still restore: absent tables are simply reported as 0 rows.
  */
-export const BACKUP_VERSION = 2;
+export const BACKUP_VERSION = 4;
 
 export interface BackupFile {
   app: "AGRODATA";

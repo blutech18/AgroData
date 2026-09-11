@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import type {
+  AquacultureStatistic,
   FisheriesStatistic,
   LivestockStatistic,
   PeriodType,
@@ -27,6 +28,37 @@ export interface YieldTrendPoint {
   period: string; // e.g. "2025"
   yield: number;
   area: number;
+}
+
+/**
+ * A livestock inventory snapshot as encoded per producer + species + barangay
+ * on a reference date. Inventory is a *stock* (a count at a point in time), so
+ * summing every snapshot double-counts the same animals across dates.
+ */
+interface LivestockSnapshotRow {
+  farmer_id: number;
+  species_id: number;
+  barangay: string | null;
+  record_date: string;
+  inventory_count: number;
+}
+
+/**
+ * Reduces periodic livestock snapshots to the latest inventory per holding
+ * (producer + species + barangay). This is the defensible "current inventory"
+ * measure: the most recent recorded head count for each holding, never the sum
+ * of repeated snapshots of the same animals.
+ *
+ * Exported for unit testing; also used by the dashboard aggregations below.
+ */
+export function latestInventoryByHolding<T extends LivestockSnapshotRow>(rows: T[]): T[] {
+  const latest = new Map<string, T>();
+  for (const r of rows) {
+    const key = `${r.farmer_id}|${r.species_id}|${r.barangay ?? ""}`;
+    const cur = latest.get(key);
+    if (!cur || r.record_date > cur.record_date) latest.set(key, r);
+  }
+  return [...latest.values()];
 }
 
 interface PlantingJoin {
@@ -68,33 +100,45 @@ export async function fetchDashboardSummary(): Promise<DashboardSummary> {
     countRows("planting_records", (q) => q.eq("planting_status", "PLANTED")),
   ]);
 
-  const { data: plantings } = await supabase.from("planting_records").select("area_planted");
-  const { data: harvests } = await supabase.from("harvest_inventory").select("quantity_harvested");
-  const { data: livestock } = await supabase
-    .from("livestock_records")
-    .select("inventory_count");
-  const { data: catches } = await supabase.from("fish_catch").select("quantity");
-  const { data: aquaHarvests } = await supabase
-    .from("aquaculture_cycles")
-    .select("harvest_qty");
+  // Run the aggregate source reads in parallel and surface any error instead of
+  // silently treating a failed query as an empty result (which would render a
+  // misleading zero on the dashboard).
+  const [plantingsRes, harvestsRes, livestockRes, catchesRes, aquaRes] = await Promise.all([
+    supabase.from("planting_records").select("area_planted"),
+    supabase.from("harvest_inventory").select("quantity_harvested"),
+    supabase
+      .from("livestock_records")
+      .select("farmer_id, species_id, barangay, record_date, inventory_count"),
+    supabase.from("fish_catch").select("quantity"),
+    supabase.from("aquaculture_cycles").select("harvest_qty"),
+  ]);
 
-  const totalAreaPlanted = (plantings ?? []).reduce(
+  const firstError =
+    plantingsRes.error ??
+    harvestsRes.error ??
+    livestockRes.error ??
+    catchesRes.error ??
+    aquaRes.error;
+  if (firstError) throw firstError;
+
+  const totalAreaPlanted = (plantingsRes.data ?? []).reduce(
     (sum, p: { area_planted: number }) => sum + Number(p.area_planted ?? 0),
     0
   );
-  const totalYield = (harvests ?? []).reduce(
+  const totalYield = (harvestsRes.data ?? []).reduce(
     (sum, h: { quantity_harvested: number }) => sum + Number(h.quantity_harvested ?? 0),
     0
   );
-  const animalInventory = (livestock ?? []).reduce(
-    (sum, l: { inventory_count: number }) => sum + Number(l.inventory_count ?? 0),
-    0
-  );
-  const fishCatch = (catches ?? []).reduce(
+  // Current inventory = latest snapshot per holding, not the sum of every
+  // periodic snapshot (which would count the same animals many times).
+  const animalInventory = latestInventoryByHolding(
+    (livestockRes.data ?? []) as LivestockSnapshotRow[]
+  ).reduce((sum, l) => sum + Number(l.inventory_count ?? 0), 0);
+  const fishCatch = (catchesRes.data ?? []).reduce(
     (sum, c: { quantity: number }) => sum + Number(c.quantity ?? 0),
     0
   );
-  const aquacultureHarvest = (aquaHarvests ?? []).reduce(
+  const aquacultureHarvest = (aquaRes.data ?? []).reduce(
     (sum, a: { harvest_qty: number | null }) => sum + Number(a.harvest_qty ?? 0),
     0
   );
@@ -112,20 +156,48 @@ export async function fetchDashboardSummary(): Promise<DashboardSummary> {
   };
 }
 
-/** Livestock/poultry inventory distribution — recorded inventory per species. */
+/**
+ * Livestock/poultry inventory distribution — current recorded inventory per
+ * species, using the latest snapshot per holding so repeated periodic records
+ * of the same animals are not counted more than once.
+ */
 export async function fetchLivestockBySpecies(): Promise<NamedValue[]> {
   const { data, error } = await supabase
     .from("livestock_records")
-    .select("inventory_count, livestock_species(species_name)");
+    .select(
+      "farmer_id, species_id, barangay, record_date, inventory_count, livestock_species(species_name)"
+    );
+  if (error) throw error;
+
+  type Row = LivestockSnapshotRow & { livestock_species: { species_name: string } | null };
+  const latest = latestInventoryByHolding((data ?? []) as unknown as Row[]);
+
+  const map = new Map<string, number>();
+  for (const row of latest) {
+    const name = row.livestock_species?.species_name ?? "Unknown";
+    map.set(name, (map.get(name) ?? 0) + Number(row.inventory_count ?? 0));
+  }
+  return [...map.entries()]
+    .map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 }))
+    .sort((a, b) => b.value - a.value);
+}
+
+/**
+ * Aquaculture harvest distribution — total harvested quantity per cultured
+ * species. Only cycles with a recorded harvest quantity contribute, so
+ * still-stocked or lost cycles do not distort the totals.
+ */
+export async function fetchAquacultureBySpecies(): Promise<NamedValue[]> {
+  const { data, error } = await supabase
+    .from("aquaculture_cycles")
+    .select("species_name, harvest_qty");
   if (error) throw error;
 
   const map = new Map<string, number>();
-  for (const row of (data ?? []) as unknown as {
-    inventory_count: number;
-    livestock_species: { species_name: string } | null;
-  }[]) {
-    const name = row.livestock_species?.species_name ?? "Unknown";
-    map.set(name, (map.get(name) ?? 0) + Number(row.inventory_count ?? 0));
+  for (const row of (data ?? []) as { species_name: string; harvest_qty: number | null }[]) {
+    if (row.harvest_qty == null) continue;
+    const name = row.species_name?.trim() || "Unspecified";
+    map.set(name, (map.get(name) ?? 0) + Number(row.harvest_qty ?? 0));
   }
   return [...map.entries()]
     .map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 }))
@@ -251,6 +323,16 @@ export async function fetchFisheriesStatistics(): Promise<FisheriesStatistic[]> 
     .order("subsector", { ascending: true });
   if (error) throw error;
   return (data as FisheriesStatistic[]) ?? [];
+}
+
+export async function fetchAquacultureStatistics(): Promise<AquacultureStatistic[]> {
+  const { data, error } = await supabase
+    .from("aquaculture_statistics")
+    .select("*")
+    .order("period_start", { ascending: false })
+    .order("species_name", { ascending: true });
+  if (error) throw error;
+  return (data as AquacultureStatistic[]) ?? [];
 }
 
 /**

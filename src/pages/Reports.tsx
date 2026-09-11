@@ -12,6 +12,7 @@ import {
   FileType,
   Beef,
   Fish,
+  Waves,
   type LucideIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -89,6 +90,13 @@ const reportTypes: {
     label: "Municipal Fisheries Catch Report",
     desc: "Total catch per species and subsector (marine/inland) for a quarter.",
     icon: Fish,
+    period: "quarter",
+  },
+  {
+    value: "aquaculture_summary",
+    label: "Aquaculture Stocking & Harvest Summary",
+    desc: "Stocked and harvested quantities per site type and species for a quarter.",
+    icon: Waves,
     period: "quarter",
   },
   {

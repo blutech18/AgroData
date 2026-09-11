@@ -28,10 +28,11 @@ import {
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatCard } from "@/components/shared/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LoadingState, EmptyState } from "@/components/shared/states";
+import { LoadingState, EmptyState, ErrorState } from "@/components/shared/states";
 import { formatNumber } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import {
+  fetchAquacultureBySpecies,
   fetchAreaByBarangay,
   fetchDashboardSummary,
   fetchFishCatchBySubsector,
@@ -56,6 +57,10 @@ export default function DashboardPage() {
     queryKey: ["catch-by-subsector"],
     queryFn: fetchFishCatchBySubsector,
   });
+  const aquacultureBySpecies = useQuery({
+    queryKey: ["aquaculture-by-species"],
+    queryFn: fetchAquacultureBySpecies,
+  });
 
   const s = summary.data;
 
@@ -68,9 +73,13 @@ export default function DashboardPage() {
 
       {summary.isLoading ? (
         <LoadingState label="Loading dashboard…" />
+      ) : summary.isError ? (
+        <ErrorState
+          message={summary.error instanceof Error ? summary.error.message : undefined}
+        />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard label="Registered Farmers" value={formatNumber(s?.farmerCount)} icon={Users} accent="primary" />
             <StatCard label="Farms" value={formatNumber(s?.farmCount)} icon={Map} accent="emerald" />
             <StatCard label="Crop Types" value={formatNumber(s?.cropCount)} icon={Sprout} accent="sky" />
@@ -233,6 +242,35 @@ export default function DashboardPage() {
                   </ResponsiveContainer>
                 ) : (
                   <EmptyState title="No fish catch data yet" description="Record fish catch to see subsector distribution." />
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Aquaculture Harvest by Species</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {aquacultureBySpecies.isError ? (
+                  <ErrorState
+                    message={
+                      aquacultureBySpecies.error instanceof Error
+                        ? aquacultureBySpecies.error.message
+                        : undefined
+                    }
+                  />
+                ) : aquacultureBySpecies.data && aquacultureBySpecies.data.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={aquacultureBySpecies.data.slice(0, 8)}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="name" fontSize={12} interval={0} angle={-20} textAnchor="end" height={60} />
+                      <YAxis fontSize={12} />
+                      <Tooltip formatter={(v: number) => formatNumber(v, 2)} />
+                      <Bar dataKey="value" name="Harvest" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <EmptyState title="No aquaculture harvest yet" description="Record harvested culture cycles to see species distribution." />
                 )}
               </CardContent>
             </Card>

@@ -43,9 +43,12 @@ import {
   fetchLivestockRecords,
   fetchLivestockSpecies,
   updateLivestockRecord,
+  validateLivestockRecord,
   type LivestockRecordInput,
 } from "@/features/livestock";
 import { fetchFarmerOptions } from "@/features/farmers";
+import { fetchUnitOptions } from "@/features/reference";
+import { CatalogSelect } from "@/components/shared/CatalogSelect";
 import type { AnimalProductType, LivestockRecord } from "@/types/database";
 
 const emptyForm: LivestockRecordInput = {
@@ -71,6 +74,9 @@ export default function LivestockPage() {
   const { profile } = useAuth();
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
+  const [speciesFilter, setSpeciesFilter] = React.useState("ALL");
+  const [fromDate, setFromDate] = React.useState("");
+  const [toDate, setToDate] = React.useState("");
   const [page, setPage] = React.useState(1);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<LivestockRecord | null>(null);
@@ -85,15 +91,27 @@ export default function LivestockPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  React.useEffect(() => setPage(1), [speciesFilter, fromDate, toDate]);
+
   const PAGE_SIZE = 12;
 
+  const filters = React.useMemo(
+    () => ({
+      speciesId: speciesFilter === "ALL" ? undefined : Number(speciesFilter),
+      from: fromDate || undefined,
+      to: toDate || undefined,
+    }),
+    [speciesFilter, fromDate, toDate]
+  );
+
   const { data, isLoading, isError, isFetching } = useQuery({
-    queryKey: ["livestock-records", debounced, page],
-    queryFn: () => fetchLivestockRecords(debounced, page, PAGE_SIZE),
+    queryKey: ["livestock-records", debounced, page, filters],
+    queryFn: () => fetchLivestockRecords(debounced, page, PAGE_SIZE, filters),
     placeholderData: keepPreviousData,
   });
   const farmers = useQuery({ queryKey: ["farmer-options"], queryFn: fetchFarmerOptions });
   const species = useQuery({ queryKey: ["livestock-species"], queryFn: fetchLivestockSpecies });
+  const unitOptions = useQuery({ queryKey: ["unit-options"], queryFn: fetchUnitOptions });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["livestock-records"] });
   const total = data?.total ?? 0;
@@ -180,14 +198,73 @@ export default function LivestockPage() {
         </Button>
       </PageHeader>
 
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search barangay…"
-          className="pl-9"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search barangay…"
+            className="pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search barangay"
+          />
+        </div>
+        <div className="w-full sm:w-48">
+          <Select value={speciesFilter} onValueChange={setSpeciesFilter}>
+            <SelectTrigger aria-label="Filter by species">
+              <SelectValue placeholder="All species" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All species</SelectItem>
+              {(species.data ?? []).map((s) => (
+                <SelectItem key={s.species_id} value={String(s.species_id)}>
+                  {s.species_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-end gap-2">
+          <div className="space-y-1">
+            <Label htmlFor="from-date" className="text-xs text-muted-foreground">
+              From
+            </Label>
+            <Input
+              id="from-date"
+              type="date"
+              className="w-full sm:w-40"
+              value={fromDate}
+              max={toDate || undefined}
+              onChange={(e) => setFromDate(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="to-date" className="text-xs text-muted-foreground">
+              To
+            </Label>
+            <Input
+              id="to-date"
+              type="date"
+              className="w-full sm:w-40"
+              value={toDate}
+              min={fromDate || undefined}
+              onChange={(e) => setToDate(e.target.value)}
+            />
+          </div>
+          {(speciesFilter !== "ALL" || fromDate || toDate) && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setSpeciesFilter("ALL");
+                setFromDate("");
+                setToDate("");
+              }}
+            >
+              Clear
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card>
@@ -269,6 +346,11 @@ export default function LivestockPage() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              const problem = validateLivestockRecord(form);
+              if (problem) {
+                toast({ title: "Check the record", description: problem, variant: "error" });
+                return;
+              }
               saveMutation.mutate();
             }}
             className="space-y-4"
@@ -277,7 +359,17 @@ export default function LivestockPage() {
               <Label>Producer</Label>
               <Select
                 value={form.farmer_id ? String(form.farmer_id) : ""}
-                onValueChange={(v) => setForm({ ...form, farmer_id: Number(v) })}
+                onValueChange={(v) => {
+                  const fid = Number(v);
+                  const picked = (farmers.data ?? []).find((f) => f.farmer_id === fid);
+                  setForm((prev) => ({
+                    ...prev,
+                    farmer_id: fid,
+                    // Convenience: default the barangay to the producer's own
+                    // barangay when it hasn't been set yet. Staff can override.
+                    barangay: prev.barangay.trim() ? prev.barangay : picked?.barangay ?? "",
+                  }));
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select producer" />
@@ -419,11 +511,13 @@ export default function LivestockPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="punit">Unit</Label>
-                <Input
+                <CatalogSelect
                   id="punit"
-                  placeholder="kg, L, pcs"
+                  ariaLabel="Production unit"
+                  placeholder="Select unit"
+                  options={unitOptions.data ?? []}
                   value={form.production_unit ?? ""}
-                  onChange={(e) => setForm({ ...form, production_unit: e.target.value })}
+                  onChange={(v) => setForm({ ...form, production_unit: v })}
                 />
               </div>
             </div>

@@ -17,6 +17,7 @@ export type ReportType =
   | "annual_municipal_summary"
   | "livestock_inventory"
   | "fisheries_catch"
+  | "aquaculture_summary"
   | "farmer_registry";
 
 export interface ReportColumn {

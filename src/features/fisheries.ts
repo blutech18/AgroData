@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { todayISO } from "@/lib/utils";
 import type {
   FishCatch,
   Fisherfolk,
@@ -80,6 +81,17 @@ export async function fetchFisherfolkOptions(): Promise<FisherfolkOption[]> {
   return (data as unknown as FisherfolkOption[]) ?? [];
 }
 
+/**
+ * Producer IDs that already have a fisherfolk profile. Each producer may only
+ * have one (the DB enforces a unique farmer_id), so the registration form uses
+ * this to hide producers that are already registered.
+ */
+export async function fetchRegisteredFisherfolkFarmerIds(): Promise<number[]> {
+  const { data, error } = await supabase.from("fisherfolk").select("farmer_id");
+  if (error) throw error;
+  return ((data as { farmer_id: number }[]) ?? []).map((r) => r.farmer_id);
+}
+
 // ---------------------------------------------------------------------------
 // Fish catch records
 // ---------------------------------------------------------------------------
@@ -99,10 +111,21 @@ export interface FishCatchPage {
   total: number;
 }
 
+export interface FishCatchFilters {
+  subsector?: FisheriesSubsector;
+  /** Exact species match (from the aquatic species catalog). */
+  species?: string;
+  /** Inclusive lower bound on catch_date (YYYY-MM-DD). */
+  from?: string;
+  /** Inclusive upper bound on catch_date (YYYY-MM-DD). */
+  to?: string;
+}
+
 export async function fetchFishCatch(
   search = "",
   page = 1,
-  pageSize = 12
+  pageSize = 12,
+  filters: FishCatchFilters = {}
 ): Promise<FishCatchPage> {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -114,6 +137,10 @@ export async function fetchFishCatch(
   if (search.trim()) {
     query = query.ilike("species_name", `%${search.trim()}%`);
   }
+  if (filters.subsector) query = query.eq("subsector", filters.subsector);
+  if (filters.species) query = query.eq("species_name", filters.species);
+  if (filters.from) query = query.gte("catch_date", filters.from);
+  if (filters.to) query = query.lte("catch_date", filters.to);
   const { data, error, count } = await query;
   if (error) throw error;
   return { rows: (data as FishCatch[]) ?? [], total: count ?? 0 };
@@ -139,4 +166,27 @@ export async function updateFishCatch(id: number, input: FishCatchInput): Promis
 export async function deleteFishCatch(id: number): Promise<void> {
   const { error } = await supabase.from("fish_catch").delete().eq("catch_id", id);
   if (error) throw error;
+}
+
+// ---------------------------------------------------------------------------
+// Business validation (pure — safe to unit test and to call before saving)
+// ---------------------------------------------------------------------------
+
+/**
+ * Validates a fish catch record: rejects future catch dates, requires a named
+ * species and a unit, and requires a catch quantity greater than zero (a
+ * zero-quantity catch is not a meaningful record). Returns a human-readable
+ * message, or null when the record is acceptable.
+ */
+export function validateFishCatch(
+  input: FishCatchInput,
+  today: string = todayISO()
+): string | null {
+  if (!input.catch_date) return "Catch date is required.";
+  if (input.catch_date > today) return "Catch date cannot be in the future.";
+  if (!input.species_name.trim()) return "Species is required.";
+  if (!input.unit.trim()) return "Unit is required.";
+  const qty = Number(input.quantity ?? 0);
+  if (!Number.isFinite(qty) || qty <= 0) return "Catch quantity must be greater than zero.";
+  return null;
 }

@@ -187,13 +187,14 @@ export interface FarmerOption {
   farmer_id: number;
   first_name: string;
   last_name: string;
+  barangay: string;
 }
 
 /** Lightweight list of producers for select inputs (livestock, fisheries, aquaculture). */
 export async function fetchFarmerOptions(): Promise<FarmerOption[]> {
   const { data, error } = await supabase
     .from("farmers")
-    .select("farmer_id, first_name, last_name")
+    .select("farmer_id, first_name, last_name, barangay")
     .order("last_name");
   if (error) throw error;
   return (data as FarmerOption[]) ?? [];

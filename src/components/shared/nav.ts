@@ -17,6 +17,7 @@ import {
   Fish,
   Waves,
   Droplets,
+  Tags,
   type LucideIcon,
 } from "lucide-react";
 
@@ -71,6 +72,7 @@ export const navSections: NavSection[] = [
     title: "Office",
     items: [
       { label: "Reports", to: "/reports", icon: FileText, adminOnly: true },
+      { label: "Reference Data", to: "/reference-data", icon: Tags, adminOnly: true },
       { label: "User Accounts", to: "/users", icon: UserCog, adminOnly: true },
       { label: "Backup & Restore", to: "/backup", icon: DatabaseBackup, adminOnly: true },
       { label: "Audit Logs", to: "/audit-logs", icon: ScrollText, adminOnly: true },

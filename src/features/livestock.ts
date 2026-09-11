@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { todayISO } from "@/lib/utils";
 import type {
   AnimalProductType,
   LivestockCategory,
@@ -75,10 +76,19 @@ export interface LivestockRecordPage {
   total: number;
 }
 
+export interface LivestockFilters {
+  speciesId?: number;
+  /** Inclusive lower bound on record_date (YYYY-MM-DD). */
+  from?: string;
+  /** Inclusive upper bound on record_date (YYYY-MM-DD). */
+  to?: string;
+}
+
 export async function fetchLivestockRecords(
   search = "",
   page = 1,
-  pageSize = 12
+  pageSize = 12,
+  filters: LivestockFilters = {}
 ): Promise<LivestockRecordPage> {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -94,6 +104,9 @@ export async function fetchLivestockRecords(
     const term = `%${search.trim()}%`;
     query = query.ilike("barangay", term);
   }
+  if (filters.speciesId) query = query.eq("species_id", filters.speciesId);
+  if (filters.from) query = query.gte("record_date", filters.from);
+  if (filters.to) query = query.lte("record_date", filters.to);
   const { data, error, count } = await query;
   if (error) throw error;
   return { rows: (data as LivestockRecord[]) ?? [], total: count ?? 0 };
@@ -122,4 +135,48 @@ export async function updateLivestockRecord(
 export async function deleteLivestockRecord(id: number): Promise<void> {
   const { error } = await supabase.from("livestock_records").delete().eq("record_id", id);
   if (error) throw error;
+}
+
+// ---------------------------------------------------------------------------
+// Business validation (pure — safe to unit test and to call before saving)
+// ---------------------------------------------------------------------------
+
+/**
+ * Validates a livestock record beyond the database's non-negative checks:
+ * rejects future record dates, prevents losses (deaths + disposed) from
+ * exceeding the animals that could plausibly be present in the period
+ * (recorded inventory + births), and enforces production type/quantity/unit
+ * consistency. Returns a human-readable message, or null when the record is
+ * acceptable.
+ */
+export function validateLivestockRecord(
+  input: LivestockRecordInput,
+  today: string = todayISO()
+): string | null {
+  if (!input.record_date) return "Record date is required.";
+  if (input.record_date > today) return "Record date cannot be in the future.";
+
+  const inventory = Number(input.inventory_count ?? 0);
+  const births = Number(input.births ?? 0);
+  const deaths = Number(input.deaths ?? 0);
+  const disposed = Number(input.disposed ?? 0);
+  if ([inventory, births, deaths, disposed].some((n) => n < 0 || !Number.isFinite(n))) {
+    return "Counts must be zero or a positive number.";
+  }
+  if (deaths + disposed > inventory + births) {
+    return "Deaths and dispositions cannot exceed the recorded inventory plus births.";
+  }
+
+  const qty = input.production_qty;
+  const hasType = input.production_type != null;
+  const hasQty = qty != null && qty > 0;
+  const hasUnit = !!(input.production_unit && input.production_unit.trim());
+  if (qty != null && (qty < 0 || !Number.isFinite(qty))) {
+    return "Production quantity must be zero or a positive number.";
+  }
+  if (hasQty && !hasType) return "Select a production type for the recorded production quantity.";
+  if (hasQty && !hasUnit) return "Enter a unit for the recorded production quantity.";
+  if (hasType && !hasQty) return "Enter a production quantity for the selected production type.";
+
+  return null;
 }

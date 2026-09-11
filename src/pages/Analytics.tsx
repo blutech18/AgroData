@@ -40,6 +40,7 @@ import { logActivity } from "@/lib/audit";
 import { formatDate, formatNumber } from "@/lib/utils";
 import {
   computeAndStoreYieldStatistics,
+  fetchAquacultureStatistics,
   fetchFisheriesStatistics,
   fetchLivestockStatistics,
   fetchYieldStatistics,
@@ -63,6 +64,10 @@ export default function AnalyticsPage() {
     queryKey: ["fisheries-statistics"],
     queryFn: fetchFisheriesStatistics,
   });
+  const aquacultureStats = useQuery({
+    queryKey: ["aquaculture-statistics"],
+    queryFn: fetchAquacultureStatistics,
+  });
 
   const computeMutation = useMutation({
     mutationFn: () => computeAndStoreYieldStatistics(periodType),
@@ -75,12 +80,13 @@ export default function AnalyticsPage() {
       });
       toast({
         title: "Statistics computed",
-        description: `${count} ${periodType.toLowerCase()} summary record(s) stored across crops, livestock, and fisheries.`,
+        description: `${count} ${periodType.toLowerCase()} summary record(s) stored across crops, livestock, fisheries, and aquaculture.`,
         variant: "success",
       });
       qc.invalidateQueries({ queryKey: ["yield-statistics"] });
       qc.invalidateQueries({ queryKey: ["livestock-statistics"] });
       qc.invalidateQueries({ queryKey: ["fisheries-statistics"] });
+      qc.invalidateQueries({ queryKey: ["aquaculture-statistics"] });
     },
     onError: (err: unknown) =>
       toast({
@@ -94,6 +100,7 @@ export default function AnalyticsPage() {
   const statRows = stats.data ?? [];
   const livestockRows = livestockStats.data ?? [];
   const fisheriesRows = fisheriesStats.data ?? [];
+  const aquacultureRows = aquacultureStats.data ?? [];
 
   return (
     <div>
@@ -358,6 +365,7 @@ export default function AnalyticsPage() {
                       <TableHead>Species</TableHead>
                       <TableHead>Period</TableHead>
                       <TableHead>Total Catch</TableHead>
+                      <TableHead>Unit</TableHead>
                       <TableHead>Records</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -377,7 +385,71 @@ export default function AnalyticsPage() {
                           {formatDate(s.period_start)} – {formatDate(s.period_end)}
                         </TableCell>
                         <TableCell>{formatNumber(s.total_catch, 2)}</TableCell>
+                        <TableCell>{s.unit ?? "kg"}</TableCell>
                         <TableCell>{formatNumber(s.catch_records)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Stored statistical summaries — aquaculture */}
+        <Card className="overflow-hidden">
+          <CardHeader>
+            <CardTitle>Aquaculture Statistical Summaries</CardTitle>
+            <CardDescription>
+              Stocked and harvested quantities per species and site type, grouped by unit, for the
+              selected reporting period.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {aquacultureStats.isLoading ? (
+              <LoadingState label="Loading summaries…" />
+            ) : aquacultureRows.length === 0 ? (
+              <EmptyState
+                title="No aquaculture statistics stored yet"
+                description={
+                  isAdmin
+                    ? "Use Compute & store above to generate summaries."
+                    : "The Municipal Agriculturalist has not generated summaries for this period yet."
+                }
+              />
+            ) : (
+              <div className="overflow-x-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Species</TableHead>
+                      <TableHead>Site type</TableHead>
+                      <TableHead>Period</TableHead>
+                      <TableHead>Stocked</TableHead>
+                      <TableHead>Harvested</TableHead>
+                      <TableHead>Unit</TableHead>
+                      <TableHead>Active</TableHead>
+                      <TableHead>Harvested</TableHead>
+                      <TableHead>Lost</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {aquacultureRows.map((s) => (
+                      <TableRow key={s.stat_id}>
+                        <TableCell className="font-medium">{s.species_name}</TableCell>
+                        <TableCell>{s.site_type ?? "All"}</TableCell>
+                        <TableCell className="whitespace-nowrap text-sm">
+                          <Badge variant="secondary" className="mr-1">
+                            {s.period_type}
+                          </Badge>
+                          {formatDate(s.period_start)} – {formatDate(s.period_end)}
+                        </TableCell>
+                        <TableCell>{formatNumber(s.total_stocked, 2)}</TableCell>
+                        <TableCell>{formatNumber(s.total_harvested, 2)}</TableCell>
+                        <TableCell>{s.unit}</TableCell>
+                        <TableCell>{formatNumber(s.active_cycles)}</TableCell>
+                        <TableCell>{formatNumber(s.harvested_cycles)}</TableCell>
+                        <TableCell>{formatNumber(s.lost_cycles)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

@@ -301,11 +301,12 @@ begin
   group by lr.species_id, extract(year from lr.record_date);
 
   insert into public.fisheries_statistics (
-    subsector, species_name, period_type, period_start, period_end,
+    subsector, species_name, unit, period_type, period_start, period_end,
     total_catch, catch_records, computed_at
   )
   select fc.subsector,
          fc.species_name,
+         coalesce(nullif(fc.unit, ''), 'kg'),
          'YEARLY',
          make_date(extract(year from fc.catch_date)::int, 1, 1),
          make_date(extract(year from fc.catch_date)::int, 12, 31),
@@ -313,7 +314,32 @@ begin
          count(*),
          now()
   from public.fish_catch fc
-  group by fc.subsector, fc.species_name, extract(year from fc.catch_date);
+  group by fc.subsector, fc.species_name, coalesce(nullif(fc.unit, ''), 'kg'),
+           extract(year from fc.catch_date);
+
+  -- Aquaculture yearly summaries (migration 0012), bucketed by stocking year,
+  -- grouped by species, site type, and unit.
+  insert into public.aquaculture_statistics (
+    species_name, site_type, unit, period_type, period_start, period_end,
+    total_stocked, total_harvested, active_cycles, harvested_cycles, lost_cycles,
+    computed_at
+  )
+  select ac.species_name,
+         s.site_type,
+         coalesce(nullif(ac.unit, ''), 'kg'),
+         'YEARLY',
+         make_date(extract(year from ac.stocking_date)::int, 1, 1),
+         make_date(extract(year from ac.stocking_date)::int, 12, 31),
+         round(sum(coalesce(ac.stocking_qty, 0)), 2),
+         round(sum(coalesce(ac.harvest_qty, 0)), 2),
+         count(*) filter (where ac.status = 'STOCKED'),
+         count(*) filter (where ac.status = 'HARVESTED'),
+         count(*) filter (where ac.status = 'LOST'),
+         now()
+  from public.aquaculture_cycles ac
+  join public.aquaculture_sites s on s.site_id = ac.site_id
+  group by ac.species_name, s.site_type, coalesce(nullif(ac.unit, ''), 'kg'),
+           extract(year from ac.stocking_date);
 
   -- ---------- A few audit log entries (linked to any existing user) --------
   insert into public.audit_logs (user_id, action, entity, entity_id, details, created_at)
