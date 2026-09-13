@@ -1,10 +1,11 @@
 import * as React from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, RotateCcw, Search, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DateFilterInput } from "@/components/ui/date-filter-input";
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -42,6 +43,7 @@ import {
   fetchHarvests,
   type HarvestInput,
 } from "@/features/planting";
+import { fetchCrops } from "@/features/crops";
 import type { HarvestInventory } from "@/types/database";
 
 const emptyForm: HarvestInput = { planting_id: 0, quantity_harvested: 0, unit: "kg" };
@@ -50,22 +52,58 @@ export default function HarvestPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const { profile } = useAuth();
+  const [search, setSearch] = React.useState("");
+  const [debounced, setDebounced] = React.useState("");
+  const [cropFilter, setCropFilter] = React.useState<string>("ALL");
+  const [fromDate, setFromDate] = React.useState<string>("");
+  const [toDate, setToDate] = React.useState<string>("");
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [form, setForm] = React.useState<HarvestInput>(emptyForm);
   const [toDelete, setToDelete] = React.useState<HarvestInventory | null>(null);
   const [page, setPage] = React.useState(1);
 
+  React.useEffect(() => {
+    const t = setTimeout(() => {
+      setDebounced(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  React.useEffect(() => {
+    setPage(1);
+  }, [cropFilter, fromDate, toDate]);
+
   const PAGE_SIZE = 12;
 
+  const crops = useQuery({ queryKey: ["crops"], queryFn: () => fetchCrops() });
+
   const { data, isLoading, isError, isFetching } = useQuery({
-    queryKey: ["harvest", page],
-    queryFn: () => fetchHarvests(page, PAGE_SIZE),
+    queryKey: ["harvest", debounced, page, cropFilter, fromDate, toDate],
+    queryFn: () =>
+      fetchHarvests(page, PAGE_SIZE, debounced, {
+        cropName: cropFilter,
+        from: fromDate || undefined,
+        to: toDate || undefined,
+      }),
     placeholderData: keepPreviousData,
   });
   const plantings = useQuery({
     queryKey: ["harvestable-plantings"],
     queryFn: fetchHarvestablePlantings,
   });
+
+  const hasActiveFilters =
+    Boolean(search) || cropFilter !== "ALL" || Boolean(fromDate) || Boolean(toDate);
+
+  const resetFilters = () => {
+    setSearch("");
+    setDebounced("");
+    setCropFilter("ALL");
+    setFromDate("");
+    setToDate("");
+    setPage(1);
+  };
 
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -122,13 +160,88 @@ export default function HarvestPage() {
         </Button>
       </PageHeader>
 
+      <div className="mb-4 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search farm, barangay, plot…"
+            className="w-full pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search harvests"
+          />
+        </div>
+
+        <div className="w-full sm:w-44">
+          <Select value={cropFilter} onValueChange={setCropFilter}>
+            <SelectTrigger aria-label="Filter by crop">
+              <SelectValue placeholder="All crops" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All crops</SelectItem>
+              {(crops.data?.rows ?? []).map((c) => (
+                <SelectItem key={c.crop_id} value={c.crop_name}>
+                  {c.crop_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="w-full sm:w-44">
+          <DateFilterInput
+            id="harvest-from-date"
+            placeholder="From"
+            value={fromDate}
+            max={toDate || undefined}
+            onChange={setFromDate}
+          />
+        </div>
+        <div className="w-full sm:w-44">
+          <DateFilterInput
+            id="harvest-to-date"
+            placeholder="To"
+            value={toDate}
+            min={fromDate || undefined}
+            onChange={setToDate}
+          />
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={resetFilters}
+          disabled={!hasActiveFilters}
+          title="Reset filters"
+          aria-label="Reset filters"
+          className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-40"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
+      </div>
+
       <Card>
         {isLoading ? (
           <LoadingState />
         ) : isError ? (
           <ErrorState />
         ) : harvests.length === 0 ? (
-          <EmptyState title="No harvest records" description="Record harvested quantities to track yield." />
+          <EmptyState
+            title={hasActiveFilters ? "No harvest records match your filters" : "No harvest records"}
+            description={
+              hasActiveFilters
+                ? "Try clearing or adjusting your search and filter criteria."
+                : "Record harvested quantities to track yield."
+            }
+            action={
+              hasActiveFilters ? (
+                <Button onClick={resetFilters} variant="outline">
+                  Reset filters
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
           <>
             <Table>

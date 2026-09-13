@@ -1,10 +1,11 @@
 import * as React from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search } from "lucide-react";
+import { Plus, RotateCcw, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DateFilterInput } from "@/components/ui/date-filter-input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -121,6 +122,24 @@ export default function FishCatchPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const rows = data?.rows ?? [];
 
+  const hasActiveFilters = Boolean(
+    debounced ||
+      subsectorFilter !== "ALL" ||
+      speciesFilter !== "ALL" ||
+      fromDate ||
+      toDate
+  );
+
+  const resetFilters = () => {
+    setSearch("");
+    setDebounced("");
+    setSubsectorFilter("ALL");
+    setSpeciesFilter("ALL");
+    setFromDate("");
+    setToDate("");
+    setPage(1);
+  };
+
   const saveMutation = useMutation({
     mutationFn: () => (editing ? updateFishCatch(editing.catch_id, form) : createFishCatch(form)),
     onSuccess: async (saved) => {
@@ -197,12 +216,12 @@ export default function FishCatchPage() {
         </Button>
       </PageHeader>
 
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-        <div className="relative w-full sm:max-w-xs">
+      <div className="mb-4 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search species…"
-            className="pl-9"
+            className="w-full pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             aria-label="Search species"
@@ -235,48 +254,36 @@ export default function FishCatchPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-end gap-2">
-          <div className="space-y-1">
-            <Label htmlFor="from-date" className="text-xs text-muted-foreground">
-              From
-            </Label>
-            <Input
-              id="from-date"
-              type="date"
-              className="w-full sm:w-40"
-              value={fromDate}
-              max={toDate || undefined}
-              onChange={(e) => setFromDate(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="to-date" className="text-xs text-muted-foreground">
-              To
-            </Label>
-            <Input
-              id="to-date"
-              type="date"
-              className="w-full sm:w-40"
-              value={toDate}
-              min={fromDate || undefined}
-              onChange={(e) => setToDate(e.target.value)}
-            />
-          </div>
-          {(subsectorFilter !== "ALL" || speciesFilter !== "ALL" || fromDate || toDate) && (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                setSubsectorFilter("ALL");
-                setSpeciesFilter("ALL");
-                setFromDate("");
-                setToDate("");
-              }}
-            >
-              Clear
-            </Button>
-          )}
+        <div className="w-full sm:w-44">
+          <DateFilterInput
+            id="from-date"
+            placeholder="From"
+            value={fromDate}
+            max={toDate || undefined}
+            onChange={setFromDate}
+          />
         </div>
+        <div className="w-full sm:w-44">
+          <DateFilterInput
+            id="to-date"
+            placeholder="To"
+            value={toDate}
+            min={fromDate || undefined}
+            onChange={setToDate}
+          />
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={resetFilters}
+          disabled={!hasActiveFilters}
+          title="Reset filters"
+          aria-label="Reset filters"
+          className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-40"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
       </div>
 
       <Card>
@@ -286,11 +293,20 @@ export default function FishCatchPage() {
           <ErrorState />
         ) : rows.length === 0 ? (
           <EmptyState
-            title="No catch records"
+            title={hasActiveFilters ? "No catch records match your filters" : "No catch records"}
             description={
-              (fisherfolk.data?.length ?? 0) === 0
+              hasActiveFilters
+                ? "Try clearing your filters or changing your search."
+                : (fisherfolk.data?.length ?? 0) === 0
                 ? "Register fisherfolk first, then record their catch."
                 : "Add the first catch record."
+            }
+            action={
+              hasActiveFilters ? (
+                <Button onClick={resetFilters} variant="outline" size="sm">
+                  Reset filters
+                </Button>
+              ) : undefined
             }
           />
         ) : (

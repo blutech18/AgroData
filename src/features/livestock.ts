@@ -78,6 +78,7 @@ export interface LivestockRecordPage {
 
 export interface LivestockFilters {
   speciesId?: number;
+  barangay?: string;
   /** Inclusive lower bound on record_date (YYYY-MM-DD). */
   from?: string;
   /** Inclusive upper bound on record_date (YYYY-MM-DD). */
@@ -102,14 +103,30 @@ export async function fetchLivestockRecords(
     .range(from, to);
   if (search.trim()) {
     const term = `%${search.trim()}%`;
-    query = query.ilike("barangay", term);
+    query = query.or(`barangay.ilike.${term},notes.ilike.${term}`);
   }
   if (filters.speciesId) query = query.eq("species_id", filters.speciesId);
+  if (filters.barangay) query = query.eq("barangay", filters.barangay);
   if (filters.from) query = query.gte("record_date", filters.from);
   if (filters.to) query = query.lte("record_date", filters.to);
   const { data, error, count } = await query;
   if (error) throw error;
   return { rows: (data as LivestockRecord[]) ?? [], total: count ?? 0 };
+}
+
+export async function fetchDistinctLivestockBarangays(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("livestock_records")
+    .select("barangay")
+    .not("barangay", "is", null);
+  if (error) return [];
+  const set = new Set<string>();
+  for (const row of (data as { barangay: string }[]) ?? []) {
+    if (row.barangay && row.barangay.trim()) {
+      set.add(row.barangay.trim());
+    }
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b));
 }
 
 export async function createLivestockRecord(input: LivestockRecordInput): Promise<LivestockRecord> {

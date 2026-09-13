@@ -26,10 +26,17 @@ export interface AquacultureSitePage {
   total: number;
 }
 
+export interface AquacultureSiteFilters {
+  environment?: WaterEnvironment;
+  siteType?: AquaSiteType;
+  barangay?: string;
+}
+
 export async function fetchAquacultureSites(
   search = "",
   page = 1,
-  pageSize = 12
+  pageSize = 12,
+  filters: AquacultureSiteFilters = {}
 ): Promise<AquacultureSitePage> {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -42,9 +49,27 @@ export async function fetchAquacultureSites(
     const term = `%${search.trim()}%`;
     query = query.or(`site_name.ilike.${term},barangay.ilike.${term}`);
   }
+  if (filters.environment) query = query.eq("water_environment", filters.environment);
+  if (filters.siteType) query = query.eq("site_type", filters.siteType);
+  if (filters.barangay) query = query.eq("barangay", filters.barangay);
   const { data, error, count } = await query;
   if (error) throw error;
   return { rows: (data as AquacultureSite[]) ?? [], total: count ?? 0 };
+}
+
+export async function fetchDistinctSiteBarangays(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("aquaculture_sites")
+    .select("barangay")
+    .not("barangay", "is", null);
+  if (error) return [];
+  const set = new Set<string>();
+  for (const row of (data as { barangay: string }[]) ?? []) {
+    if (row.barangay && row.barangay.trim()) {
+      set.add(row.barangay.trim());
+    }
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b));
 }
 
 export async function createAquacultureSite(

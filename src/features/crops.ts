@@ -7,24 +7,55 @@ export interface CropInput {
   expected_harvest_days: number | null;
 }
 
-export interface CropPage { rows: Crop[]; total: number; }
+export interface CropFilters {
+  category?: string | "ALL";
+}
+
+export interface CropPage {
+  rows: Crop[];
+  total: number;
+}
+
+export async function fetchDistinctCropCategories(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("crops")
+    .select("crop_category")
+    .not("crop_category", "is", null);
+  if (error) throw error;
+  const unique = Array.from(
+    new Set(
+      (data as { crop_category: string }[])
+        ?.map((d) => d.crop_category?.trim())
+        .filter(Boolean) ?? []
+    )
+  );
+  return unique.sort();
+}
 
 export async function fetchCrops(
   search = "",
   page = 1,
-  pageSize = 12
+  pageSize = 12,
+  filters: CropFilters = {}
 ): Promise<CropPage> {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
   let query = supabase
     .from("crops")
     .select("*", { count: "exact" })
-    .order("crop_name")
-    .range(from, to);
+    .order("crop_name");
+
   if (search.trim()) {
     const term = `%${search.trim()}%`;
     query = query.or(`crop_name.ilike.${term},crop_category.ilike.${term}`);
   }
+
+  if (filters.category && filters.category !== "ALL") {
+    query = query.eq("crop_category", filters.category);
+  }
+
+  query = query.range(from, to);
+
   const { data, error, count } = await query;
   if (error) throw error;
   return { rows: (data as Crop[]) ?? [], total: count ?? 0 };

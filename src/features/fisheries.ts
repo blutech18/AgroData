@@ -24,10 +24,16 @@ export interface FisherfolkPage {
   total: number;
 }
 
+export interface FisherfolkFilters {
+  involvement?: FishingInvolvement;
+  barangay?: string;
+}
+
 export async function fetchFisherfolk(
   search = "",
   page = 1,
-  pageSize = 12
+  pageSize = 12,
+  filters: FisherfolkFilters = {}
 ): Promise<FisherfolkPage> {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -37,11 +43,29 @@ export async function fetchFisherfolk(
     .order("registered_at", { ascending: false })
     .range(from, to);
   if (search.trim()) {
-    query = query.ilike("barangay", `%${search.trim()}%`);
+    const term = `%${search.trim()}%`;
+    query = query.or(`barangay.ilike.${term},vessel_type.ilike.${term},gear_type.ilike.${term}`);
   }
+  if (filters.involvement) query = query.eq("involvement", filters.involvement);
+  if (filters.barangay) query = query.eq("barangay", filters.barangay);
   const { data, error, count } = await query;
   if (error) throw error;
   return { rows: (data as Fisherfolk[]) ?? [], total: count ?? 0 };
+}
+
+export async function fetchDistinctFisherfolkBarangays(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("fisherfolk")
+    .select("barangay")
+    .not("barangay", "is", null);
+  if (error) return [];
+  const set = new Set<string>();
+  for (const row of (data as { barangay: string }[]) ?? []) {
+    if (row.barangay && row.barangay.trim()) {
+      set.add(row.barangay.trim());
+    }
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b));
 }
 
 export async function createFisherfolk(input: FisherfolkInput): Promise<Fisherfolk> {

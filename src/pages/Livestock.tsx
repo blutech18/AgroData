@@ -1,10 +1,11 @@
 import * as React from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search } from "lucide-react";
+import { Plus, RotateCcw, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DateFilterInput } from "@/components/ui/date-filter-input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -40,6 +41,7 @@ import { formatDate } from "@/lib/utils";
 import {
   createLivestockRecord,
   deleteLivestockRecord,
+  fetchDistinctLivestockBarangays,
   fetchLivestockRecords,
   fetchLivestockSpecies,
   updateLivestockRecord,
@@ -75,6 +77,7 @@ export default function LivestockPage() {
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
   const [speciesFilter, setSpeciesFilter] = React.useState("ALL");
+  const [barangayFilter, setBarangayFilter] = React.useState("ALL");
   const [fromDate, setFromDate] = React.useState("");
   const [toDate, setToDate] = React.useState("");
   const [page, setPage] = React.useState(1);
@@ -91,17 +94,20 @@ export default function LivestockPage() {
     return () => clearTimeout(t);
   }, [search]);
 
-  React.useEffect(() => setPage(1), [speciesFilter, fromDate, toDate]);
+  React.useEffect(() => {
+    setPage(1);
+  }, [speciesFilter, barangayFilter, fromDate, toDate]);
 
   const PAGE_SIZE = 12;
 
   const filters = React.useMemo(
     () => ({
       speciesId: speciesFilter === "ALL" ? undefined : Number(speciesFilter),
+      barangay: barangayFilter === "ALL" ? undefined : barangayFilter,
       from: fromDate || undefined,
       to: toDate || undefined,
     }),
-    [speciesFilter, fromDate, toDate]
+    [speciesFilter, barangayFilter, fromDate, toDate]
   );
 
   const { data, isLoading, isError, isFetching } = useQuery({
@@ -111,9 +117,34 @@ export default function LivestockPage() {
   });
   const farmers = useQuery({ queryKey: ["farmer-options"], queryFn: fetchFarmerOptions });
   const species = useQuery({ queryKey: ["livestock-species"], queryFn: fetchLivestockSpecies });
+  const barangays = useQuery({
+    queryKey: ["livestock-barangays"],
+    queryFn: fetchDistinctLivestockBarangays,
+  });
   const unitOptions = useQuery({ queryKey: ["unit-options"], queryFn: fetchUnitOptions });
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["livestock-records"] });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["livestock-records"] });
+    qc.invalidateQueries({ queryKey: ["livestock-barangays"] });
+  };
+
+  const hasActiveFilters = Boolean(
+    debounced ||
+      speciesFilter !== "ALL" ||
+      barangayFilter !== "ALL" ||
+      fromDate ||
+      toDate
+  );
+
+  const resetFilters = () => {
+    setSearch("");
+    setDebounced("");
+    setSpeciesFilter("ALL");
+    setBarangayFilter("ALL");
+    setFromDate("");
+    setToDate("");
+    setPage(1);
+  };
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const records = data?.rows ?? [];
@@ -198,18 +229,18 @@ export default function LivestockPage() {
         </Button>
       </PageHeader>
 
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-        <div className="relative w-full sm:max-w-xs">
+      <div className="mb-4 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search barangay…"
-            className="pl-9"
+            placeholder="Search barangay, notes…"
+            className="w-full pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             aria-label="Search barangay"
           />
         </div>
-        <div className="w-full sm:w-48">
+        <div className="w-full sm:w-44">
           <Select value={speciesFilter} onValueChange={setSpeciesFilter}>
             <SelectTrigger aria-label="Filter by species">
               <SelectValue placeholder="All species" />
@@ -224,47 +255,51 @@ export default function LivestockPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-end gap-2">
-          <div className="space-y-1">
-            <Label htmlFor="from-date" className="text-xs text-muted-foreground">
-              From
-            </Label>
-            <Input
-              id="from-date"
-              type="date"
-              className="w-full sm:w-40"
-              value={fromDate}
-              max={toDate || undefined}
-              onChange={(e) => setFromDate(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="to-date" className="text-xs text-muted-foreground">
-              To
-            </Label>
-            <Input
-              id="to-date"
-              type="date"
-              className="w-full sm:w-40"
-              value={toDate}
-              min={fromDate || undefined}
-              onChange={(e) => setToDate(e.target.value)}
-            />
-          </div>
-          {(speciesFilter !== "ALL" || fromDate || toDate) && (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                setSpeciesFilter("ALL");
-                setFromDate("");
-                setToDate("");
-              }}
-            >
-              Clear
-            </Button>
-          )}
+        <div className="w-full sm:w-44">
+          <Select value={barangayFilter} onValueChange={setBarangayFilter}>
+            <SelectTrigger aria-label="Filter by barangay">
+              <SelectValue placeholder="All barangays" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All barangays</SelectItem>
+              {(barangays.data ?? []).map((b) => (
+                <SelectItem key={b} value={b}>
+                  {b}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+        <div className="w-full sm:w-44">
+          <DateFilterInput
+            id="from-date"
+            placeholder="From"
+            value={fromDate}
+            max={toDate || undefined}
+            onChange={setFromDate}
+          />
+        </div>
+        <div className="w-full sm:w-44">
+          <DateFilterInput
+            id="to-date"
+            placeholder="To"
+            value={toDate}
+            min={fromDate || undefined}
+            onChange={setToDate}
+          />
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={resetFilters}
+          disabled={!hasActiveFilters}
+          title="Reset filters"
+          aria-label="Reset filters"
+          className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-40"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
       </div>
 
       <Card>
@@ -273,7 +308,21 @@ export default function LivestockPage() {
         ) : isError ? (
           <ErrorState />
         ) : records.length === 0 ? (
-          <EmptyState title="No livestock records" description="Add the first record to begin." />
+          <EmptyState
+            title={hasActiveFilters ? "No livestock records match your filters" : "No livestock records"}
+            description={
+              hasActiveFilters
+                ? "Try clearing your filters or changing your search."
+                : "Add the first record to begin."
+            }
+            action={
+              hasActiveFilters ? (
+                <Button onClick={resetFilters} variant="outline" size="sm">
+                  Reset filters
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
           <>
             <Table>

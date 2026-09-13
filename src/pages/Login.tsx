@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import { Loader2, ArrowLeft, MailCheck } from "lucide-react";
+import { Loader2, ArrowLeft, MailCheck, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/shared/Logo";
@@ -34,6 +34,13 @@ export default function LoginPage() {
     return () => clearInterval(t);
   }, [lockRemaining]);
 
+  const formatCountdown = (ms: number) => {
+    const totalSec = Math.ceil(ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return m > 0 ? `${m}m ${s}s` : `${s}s`;
+  };
+
   if (session) return <Navigate to="/" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,7 +50,10 @@ export default function LoginPage() {
     const existingLock = getLockRemaining(email);
     if (existingLock > 0) {
       setLockRemaining(existingLock);
-      setError(`Too many failed attempts. Try again in ${Math.ceil(existingLock / 60000)} minute(s).`);
+      const m = Math.floor(existingLock / 60000);
+      const s = Math.ceil((existingLock % 60000) / 1000);
+      const duration = m > 0 ? `${m}m ${s > 0 ? `${s}s` : ""}`.trim() : `${s}s`;
+      setError(`Account is temporarily locked. Please try again in ${duration}, or reset your password.`);
       return;
     }
 
@@ -54,12 +64,12 @@ export default function LoginPage() {
       if (lockMs > 0) {
         setLockRemaining(lockMs);
         setError(
-          `Account temporarily locked after 3 failed attempts. Try again in ${Math.ceil(
-            lockMs / 60000
-          )} minute(s), or reset your password.`
+          "Too many failed login attempts. For your security, this account is temporarily locked for 5 minutes. You may reset your password to regain access."
         );
+      } else if (remaining === 1) {
+        setError("Invalid email or password. Warning: 1 attempt remaining before your account is temporarily locked.");
       } else {
-        setError(`${signInError}. ${remaining} attempt(s) remaining before temporary lock.`);
+        setError("Invalid email or password. Please verify your credentials and try again.");
       }
       setSubmitting(false);
       return;
@@ -104,19 +114,26 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/10 via-background to-emerald-50 p-4">
-      <div className="w-full max-w-md">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-emerald-100/90 via-emerald-50/50 to-emerald-200/70 p-4 dark:from-emerald-950 dark:via-[#072418] dark:to-emerald-950">
+      {/* Ambient glowing orbs for visible depth and smoothness */}
+      <div className="pointer-events-none absolute -top-32 left-1/2 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-emerald-400/25 blur-[110px] dark:bg-emerald-500/20" />
+      <div className="pointer-events-none absolute -top-24 -left-20 h-[380px] w-[480px] rounded-full bg-teal-200/50 blur-[90px] dark:bg-emerald-700/25" />
+      <div className="pointer-events-none absolute -bottom-28 -right-20 h-[420px] w-[520px] rounded-full bg-emerald-300/40 blur-[100px] dark:bg-emerald-600/20" />
+
+      <div className="relative z-10 w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center text-center">
-          <Logo className="mb-3 h-20 w-20" />
+          <Logo className="mb-3 h-16 w-16" />
           <h1 className="text-2xl font-bold tracking-tight">AGRODATA</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Agricultural Data Management System
             <br />
-            Office of the Municipal Agriculturalist · LGU Kinoguitan
+            <span className="text-xs text-muted-foreground/80">
+              Office of the Municipal Agriculturalist · LGU Kinoguitan
+            </span>
           </p>
         </div>
 
-        <Card>
+        <Card className="border-border/60 bg-card/95 shadow-xl backdrop-blur-sm dark:bg-card/90">
           <CardContent className="pt-6">
             {mode === "login" ? (
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -155,15 +172,16 @@ export default function LoginPage() {
                 </div>
 
                 {error && (
-                  <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                    {error}
-                  </p>
+                  <div className="flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive dark:text-red-400" />
+                    <p className="leading-relaxed">{error}</p>
+                  </div>
                 )}
 
                 <Button type="submit" className="w-full" disabled={submitting || lockRemaining > 0}>
                   {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                   {lockRemaining > 0
-                    ? `Locked · ${Math.ceil(lockRemaining / 1000)}s`
+                    ? `Locked · ${formatCountdown(lockRemaining)}`
                     : submitting
                     ? "Signing in…"
                     : "Sign in"}
@@ -199,9 +217,10 @@ export default function LoginPage() {
                   />
                 </div>
                 {error && (
-                  <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                    {error}
-                  </p>
+                  <div className="flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive dark:text-red-400" />
+                    <p className="leading-relaxed">{error}</p>
+                  </div>
                 )}
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -226,7 +245,7 @@ export default function LoginPage() {
       </div>
 
       {/* Floating dark/light toggle */}
-      <div className="fixed bottom-5 right-5">
+      <div className="fixed bottom-5 right-5 z-20">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-background/80 shadow-lg ring-1 ring-border backdrop-blur-sm">
           <ModeToggle />
         </div>

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search } from "lucide-react";
+import { Plus, RotateCcw, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -114,6 +114,18 @@ export default function AquacultureCyclesPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const rows = data?.rows ?? [];
 
+  const hasActiveFilters = Boolean(
+    debounced || statusFilter !== "ALL" || speciesFilter !== "ALL"
+  );
+
+  const resetFilters = () => {
+    setSearch("");
+    setDebounced("");
+    setStatusFilter("ALL");
+    setSpeciesFilter("ALL");
+    setPage(1);
+  };
+
   const saveMutation = useMutation({
     mutationFn: () =>
       editing ? updateAquacultureCycle(editing.cycle_id, form) : createAquacultureCycle(form),
@@ -189,12 +201,12 @@ export default function AquacultureCyclesPage() {
         </Button>
       </PageHeader>
 
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative w-full sm:max-w-xs">
+      <div className="mb-4 flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search species…"
-            className="pl-9"
+            className="w-full pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             aria-label="Search species"
@@ -230,6 +242,18 @@ export default function AquacultureCyclesPage() {
             </SelectContent>
           </Select>
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={resetFilters}
+          disabled={!hasActiveFilters}
+          title="Reset filters"
+          aria-label="Reset filters"
+          className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-40"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
       </div>
 
       <Card>
@@ -239,11 +263,20 @@ export default function AquacultureCyclesPage() {
           <ErrorState />
         ) : rows.length === 0 ? (
           <EmptyState
-            title="No culture cycles"
+            title={hasActiveFilters ? "No culture cycles match your filters" : "No culture cycles"}
             description={
-              (sites.data?.length ?? 0) === 0
+              hasActiveFilters
+                ? "Try clearing your filters or changing your search."
+                : (sites.data?.length ?? 0) === 0
                 ? "Add an aquaculture site first, then record its cycles."
                 : "Add the first culture cycle."
+            }
+            action={
+              hasActiveFilters ? (
+                <Button onClick={resetFilters} variant="outline" size="sm">
+                  Reset filters
+                </Button>
+              ) : undefined
             }
           />
         ) : (

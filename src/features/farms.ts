@@ -12,22 +12,60 @@ export interface FarmInput {
 
 export interface FarmPage { rows: Farm[]; total: number; }
 
+export interface FarmFilters {
+  barangay?: string | "ALL";
+  soilType?: SoilType | "ALL";
+  irrigationType?: IrrigationType | "ALL";
+}
+
+export async function fetchDistinctFarmBarangays(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("farms")
+    .select("barangay")
+    .not("barangay", "is", null);
+  if (error) throw error;
+  const unique = Array.from(
+    new Set(
+      (data as { barangay: string }[])
+        ?.map((d) => d.barangay?.trim())
+        .filter(Boolean) ?? []
+    )
+  );
+  return unique.sort();
+}
+
 export async function fetchFarms(
   search = "",
   page = 1,
-  pageSize = 12
+  pageSize = 12,
+  filters: FarmFilters = {}
 ): Promise<FarmPage> {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
   let query = supabase
     .from("farms")
     .select("*, farmers(first_name, last_name)", { count: "exact" })
-    .order("farm_name")
-    .range(from, to);
+    .order("farm_name");
+
   if (search.trim()) {
     const term = `%${search.trim()}%`;
     query = query.or(`farm_name.ilike.${term},barangay.ilike.${term}`);
   }
+
+  if (filters.barangay && filters.barangay !== "ALL") {
+    query = query.eq("barangay", filters.barangay);
+  }
+
+  if (filters.soilType && filters.soilType !== "ALL") {
+    query = query.eq("soil_type", filters.soilType);
+  }
+
+  if (filters.irrigationType && filters.irrigationType !== "ALL") {
+    query = query.eq("irrigation_type", filters.irrigationType);
+  }
+
+  query = query.range(from, to);
+
   const { data, error, count } = await query;
   if (error) throw error;
   return { rows: (data as Farm[]) ?? [], total: count ?? 0 };
@@ -74,22 +112,39 @@ export interface PlotInput {
 
 export interface PlotPage { rows: FarmPlot[]; total: number; }
 
+export interface PlotFilters {
+  status?: "ACTIVE" | "FALLOW" | "ALL";
+  farmId?: number | "ALL";
+}
+
 export async function fetchPlots(
   search = "",
   page = 1,
-  pageSize = 12
+  pageSize = 12,
+  filters: PlotFilters = {}
 ): Promise<PlotPage> {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
   let query = supabase
     .from("farm_plots")
     .select("*, farms(farm_name, barangay)", { count: "exact" })
-    .order("plot_id", { ascending: false })
-    .range(from, to);
+    .order("plot_id", { ascending: false });
+
   if (search.trim()) {
     const term = `%${search.trim()}%`;
     query = query.or(`plot_number.ilike.${term}`);
   }
+
+  if (filters.status && filters.status !== "ALL") {
+    query = query.eq("status", filters.status);
+  }
+
+  if (filters.farmId && filters.farmId !== "ALL") {
+    query = query.eq("farm_id", filters.farmId);
+  }
+
+  query = query.range(from, to);
+
   const { data, error, count } = await query;
   if (error) throw error;
   return { rows: (data as FarmPlot[]) ?? [], total: count ?? 0 };

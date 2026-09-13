@@ -1,6 +1,6 @@
 import * as React from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Power, Plus, Search } from "lucide-react";
+import { Pencil, Power, Plus, RotateCcw, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ import {
   setUserStatus,
   updateUserProfile,
   type NewUserInput,
+  type UserFilters,
   type UserProfileInput,
 } from "@/features/users";
 import type { AppUser } from "@/types/database";
@@ -67,6 +68,8 @@ export default function UsersPage() {
   const [form, setForm] = React.useState<NewUserInput>(emptyForm);
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
+  const [roleFilter, setRoleFilter] = React.useState("ALL");
+  const [statusFilter, setStatusFilter] = React.useState("ALL");
   const [page, setPage] = React.useState(1);
 
   React.useEffect(() => {
@@ -74,15 +77,42 @@ export default function UsersPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  React.useEffect(() => {
+    setPage(1);
+  }, [roleFilter, statusFilter]);
+
   const PAGE_SIZE = 12;
 
+  const filters = React.useMemo<UserFilters>(
+    () => ({
+      roleId: roleFilter === "ALL" ? undefined : Number(roleFilter),
+      status:
+        statusFilter === "ALL"
+          ? undefined
+          : (statusFilter as "ACTIVE" | "INACTIVE"),
+    }),
+    [roleFilter, statusFilter]
+  );
+
   const { data, isLoading, isError, isFetching } = useQuery({
-    queryKey: ["users", debounced, page],
-    queryFn: () => fetchUsers(debounced, page, PAGE_SIZE),
+    queryKey: ["users", debounced, page, filters],
+    queryFn: () => fetchUsers(debounced, page, PAGE_SIZE, filters),
     placeholderData: keepPreviousData,
   });
   const roles = useQuery({ queryKey: ["roles"], queryFn: fetchRoles });
   const invalidate = () => qc.invalidateQueries({ queryKey: ["users"] });
+
+  const hasActiveFilters = Boolean(
+    debounced || roleFilter !== "ALL" || statusFilter !== "ALL"
+  );
+
+  const resetFilters = () => {
+    setSearch("");
+    setDebounced("");
+    setRoleFilter("ALL");
+    setStatusFilter("ALL");
+    setPage(1);
+  };
 
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -253,14 +283,56 @@ export default function UsersPage() {
         </Button>
       </PageHeader>
 
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search name, email, or username…"
-          className="pl-9"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="mb-4 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search user name, email, or username…"
+            className="w-full pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search users"
+          />
+        </div>
+        <div className="w-full sm:w-48">
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <SelectTrigger aria-label="Filter by role">
+              <SelectValue placeholder="All roles" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All roles</SelectItem>
+              {roleOptions.map((r) => (
+                <SelectItem key={r.role_id} value={String(r.role_id)}>
+                  {r.role_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-full sm:w-40">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger aria-label="Filter by status">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All statuses</SelectItem>
+              <SelectItem value="ACTIVE">Active</SelectItem>
+              <SelectItem value="INACTIVE">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={resetFilters}
+          disabled={!hasActiveFilters}
+          title="Reset filters"
+          aria-label="Reset filters"
+          className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-40"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
       </div>
 
       <Card>
@@ -270,12 +342,22 @@ export default function UsersPage() {
           <ErrorState />
         ) : users.length === 0 ? (
           <EmptyState
-            title="No user accounts yet"
-            description="Add the first OMA staff or administrator account."
+            title={hasActiveFilters ? "No user accounts match your filters" : "No user accounts yet"}
+            description={
+              hasActiveFilters
+                ? "Try clearing your filters or changing your search."
+                : "Add the first OMA staff or administrator account."
+            }
             action={
-              <Button onClick={openCreate} variant="outline">
-                <Plus className="h-4 w-4" /> Add User
-              </Button>
+              hasActiveFilters ? (
+                <Button onClick={resetFilters} variant="outline" size="sm">
+                  Reset filters
+                </Button>
+              ) : (
+                <Button onClick={openCreate} variant="outline">
+                  <Plus className="h-4 w-4" /> Add User
+                </Button>
+              )
             }
           />
         ) : (

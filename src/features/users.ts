@@ -3,10 +3,16 @@ import type { AppUser, UserRole } from "@/types/database";
 
 export interface UserPage { rows: AppUser[]; total: number; }
 
+export interface UserFilters {
+  roleId?: number;
+  status?: "ACTIVE" | "INACTIVE";
+}
+
 export async function fetchUsers(
   search = "",
   page = 1,
-  pageSize = 12
+  pageSize = 12,
+  filters: UserFilters = {}
 ): Promise<UserPage> {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -19,6 +25,8 @@ export async function fetchUsers(
     const term = `%${search.trim()}%`;
     query = query.or(`first_name.ilike.${term},last_name.ilike.${term},email.ilike.${term},username.ilike.${term}`);
   }
+  if (filters.roleId) query = query.eq("role_id", filters.roleId);
+  if (filters.status) query = query.eq("account_status", filters.status);
   const { data, error, count } = await query;
   if (error) throw error;
   return { rows: (data as AppUser[]) ?? [], total: count ?? 0 };

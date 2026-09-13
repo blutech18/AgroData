@@ -15,10 +15,18 @@ export interface PlantingInput {
 
 export interface PlantingPage { rows: PlantingRecord[]; total: number; }
 
+export interface PlantingFilters {
+  status?: PlantingStatus | "ALL";
+  cropId?: number | "ALL";
+  from?: string;
+  to?: string;
+}
+
 export async function fetchPlantingRecords(
   search = "",
   page = 1,
-  pageSize = 12
+  pageSize = 12,
+  filters: PlantingFilters = {}
 ): Promise<PlantingPage> {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -28,12 +36,30 @@ export async function fetchPlantingRecords(
       "*, crops(crop_name), farm_plots(plot_number, farms(farm_name, barangay))",
       { count: "exact" }
     )
-    .order("planting_date", { ascending: false })
-    .range(from, to);
+    .order("planting_date", { ascending: false });
+
   if (search.trim()) {
     const term = `%${search.trim()}%`;
     query = query.or(`crops.crop_name.ilike.${term},planting_status.ilike.${term}`);
   }
+
+  if (filters.status && filters.status !== "ALL") {
+    query = query.eq("planting_status", filters.status);
+  }
+
+  if (filters.cropId && filters.cropId !== "ALL") {
+    query = query.eq("crop_id", filters.cropId);
+  }
+
+  if (filters.from) {
+    query = query.gte("planting_date", filters.from);
+  }
+
+  if (filters.to) {
+    query = query.lte("planting_date", filters.to);
+  }
+
+  query = query.range(from, to);
   const { data, error, count } = await query;
   if (error) throw error;
   return { rows: (data as PlantingRecord[]) ?? [], total: count ?? 0 };
@@ -80,22 +106,75 @@ export interface HarvestInput {
 
 export interface HarvestPage { rows: HarvestInventory[]; total: number; }
 
+export interface HarvestFilters {
+  cropName?: string | "ALL";
+  from?: string;
+  to?: string;
+}
+
 export async function fetchHarvests(
   page = 1,
-  pageSize = 12
+  pageSize = 12,
+  search = "",
+  filters: HarvestFilters = {}
 ): Promise<HarvestPage> {
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-  const { data, error, count } = await supabase
+  let query = supabase
     .from("harvest_inventory")
     .select(
       "*, planting_records(planting_id, planting_date, crops(crop_name), farm_plots(plot_number, farms(farm_name, barangay)))",
       { count: "exact" }
     )
-    .order("harvested_at", { ascending: false })
-    .range(from, to);
+    .order("harvested_at", { ascending: false });
+
+  if (filters.from) {
+    query = query.gte("harvested_at", filters.from);
+  }
+  if (filters.to) {
+    query = query.lte("harvested_at", `${filters.to}T23:59:59.999Z`);
+  }
+
+  const hasSearch = Boolean(search.trim());
+  const hasCropFilter = filters.cropName && filters.cropName !== "ALL";
+
+  if (!hasSearch && !hasCropFilter) {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const { data, error, count } = await query.range(from, to);
+    if (error) throw error;
+    return { rows: (data as HarvestInventory[]) ?? [], total: count ?? 0 };
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
-  return { rows: (data as HarvestInventory[]) ?? [], total: count ?? 0 };
+  let allRows = (data as HarvestInventory[]) ?? [];
+
+  if (hasCropFilter) {
+    allRows = allRows.filter((h) => h.planting_records?.crops?.crop_name === filters.cropName);
+  }
+
+  if (hasSearch) {
+    const q = search.trim().toLowerCase();
+    allRows = allRows.filter((h) => {
+      const crop = h.planting_records?.crops?.crop_name?.toLowerCase() ?? "";
+      const farm = h.planting_records?.farm_plots?.farms?.farm_name?.toLowerCase() ?? "";
+      const barangay = h.planting_records?.farm_plots?.farms?.barangay?.toLowerCase() ?? "";
+      const plot = String(h.planting_records?.farm_plots?.plot_number ?? "").toLowerCase();
+      const unit = h.unit?.toLowerCase() ?? "";
+      const date = h.harvested_at ? new Date(h.harvested_at).toLocaleDateString().toLowerCase() : "";
+      return (
+        crop.includes(q) ||
+        farm.includes(q) ||
+        barangay.includes(q) ||
+        plot.includes(q) ||
+        unit.includes(q) ||
+        date.includes(q)
+      );
+    });
+  }
+
+  const from = (page - 1) * pageSize;
+  const paged = allRows.slice(from, from + pageSize);
+  return { rows: paged, total: allRows.length };
 }
 
 export async function fetchHarvestablePlantings(): Promise<PlantingRecord[]> {

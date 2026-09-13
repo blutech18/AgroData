@@ -1,6 +1,6 @@
 import * as React from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search } from "lucide-react";
+import { Plus, RotateCcw, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +60,8 @@ export default function PlotsPage() {
   const { profile } = useAuth();
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState<string>("ALL");
+  const [farmFilter, setFarmFilter] = React.useState<string>("ALL");
   const [page, setPage] = React.useState(1);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<FarmPlot | null>(null);
@@ -71,11 +73,19 @@ export default function PlotsPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  React.useEffect(() => {
+    setPage(1);
+  }, [statusFilter, farmFilter]);
+
   const PAGE_SIZE = 12;
 
   const { data, isLoading, isError, isFetching } = useQuery({
-    queryKey: ["plots", debounced, page],
-    queryFn: () => fetchPlots(debounced, page, PAGE_SIZE),
+    queryKey: ["plots", debounced, page, statusFilter, farmFilter],
+    queryFn: () =>
+      fetchPlots(debounced, page, PAGE_SIZE, {
+        status: statusFilter as any,
+        farmId: farmFilter === "ALL" ? "ALL" : Number(farmFilter),
+      }),
     placeholderData: keepPreviousData,
   });
   const farmOptions = useQuery({ queryKey: ["farm-options"], queryFn: fetchFarmOptions });
@@ -87,6 +97,17 @@ export default function PlotsPage() {
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["plots"] });
     qc.invalidateQueries({ queryKey: ["plot-options"] });
+  };
+
+  const hasActiveFilters =
+    Boolean(search) || statusFilter !== "ALL" || farmFilter !== "ALL";
+
+  const resetFilters = () => {
+    setSearch("");
+    setDebounced("");
+    setStatusFilter("ALL");
+    setFarmFilter("ALL");
+    setPage(1);
   };
 
   const saveMutation = useMutation({
@@ -158,14 +179,59 @@ export default function PlotsPage() {
         </p>
       )}
 
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search plot number…"
-          className="pl-9"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="mb-4 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search plot number…"
+            className="w-full pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search plots"
+          />
+        </div>
+
+        <div className="w-full sm:w-36">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger aria-label="Filter by status">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All statuses</SelectItem>
+              <SelectItem value="ACTIVE">Active</SelectItem>
+              <SelectItem value="FALLOW">Fallow</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="w-full sm:w-48">
+          <Select value={farmFilter} onValueChange={setFarmFilter}>
+            <SelectTrigger aria-label="Filter by farm">
+              <SelectValue placeholder="All farms" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All farms</SelectItem>
+              {(farmOptions.data ?? []).map((f) => (
+                <SelectItem key={f.farm_id} value={String(f.farm_id)}>
+                  {f.farm_name} ({f.barangay})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={resetFilters}
+          disabled={!hasActiveFilters}
+          title="Reset filters"
+          aria-label="Reset filters"
+          className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-40"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
       </div>
 
       <Card>
@@ -174,7 +240,21 @@ export default function PlotsPage() {
         ) : isError ? (
           <ErrorState />
         ) : plots.length === 0 ? (
-          <EmptyState title="No plots found" description="Add a plot to start recording plantings." />
+          <EmptyState
+            title={hasActiveFilters ? "No plots match your filters" : "No plots found"}
+            description={
+              hasActiveFilters
+                ? "Try clearing or adjusting your search and filter criteria."
+                : "Add a plot to start recording plantings."
+            }
+            action={
+              hasActiveFilters ? (
+                <Button onClick={resetFilters} variant="outline">
+                  Reset filters
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
           <>
             <Table>

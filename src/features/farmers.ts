@@ -16,10 +16,51 @@ export interface FarmerPage {
   total: number;
 }
 
+export interface FarmerSectors {
+  crops: boolean;
+  livestock: boolean;
+  fisheries: boolean;
+  aquaculture: boolean;
+}
+
+export type SectorKey = keyof FarmerSectors;
+
+export const SECTOR_SOURCES: { key: SectorKey; table: string }[] = [
+  { key: "crops", table: "farms" },
+  { key: "livestock", table: "livestock_records" },
+  { key: "fisheries", table: "fisherfolk" },
+  { key: "aquaculture", table: "aquaculture_sites" },
+];
+
+export interface FarmerFilters {
+  sex?: Sex | "ALL";
+  barangay?: string | "ALL";
+  sector?: keyof FarmerSectors | "ALL";
+  from?: string;
+  to?: string;
+}
+
+export async function fetchDistinctBarangays(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("farmers")
+    .select("barangay")
+    .not("barangay", "is", null);
+  if (error) throw error;
+  const unique = Array.from(
+    new Set(
+      (data as { barangay: string }[])
+        ?.map((d) => d.barangay?.trim())
+        .filter(Boolean) ?? []
+    )
+  );
+  return unique.sort();
+}
+
 export async function fetchFarmers(
   search = "",
   page = 1,
-  pageSize = 12
+  pageSize = 12,
+  filters: FarmerFilters = {}
 ): Promise<FarmerPage> {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -27,8 +68,7 @@ export async function fetchFarmers(
   let query = supabase
     .from("farmers")
     .select("*", { count: "exact" })
-    .order("last_name", { ascending: true })
-    .range(from, to);
+    .order("last_name", { ascending: true });
 
   if (search.trim()) {
     const term = `%${search.trim()}%`;
@@ -36,6 +76,45 @@ export async function fetchFarmers(
       `first_name.ilike.${term},last_name.ilike.${term},barangay.ilike.${term},contact_no.ilike.${term}`
     );
   }
+
+  if (filters.sex && filters.sex !== "ALL") {
+    query = query.eq("sex", filters.sex);
+  }
+
+  if (filters.barangay && filters.barangay !== "ALL") {
+    query = query.eq("barangay", filters.barangay);
+  }
+
+  if (filters.from) {
+    query = query.gte("registration_date", filters.from);
+  }
+
+  if (filters.to) {
+    query = query.lte("registration_date", `${filters.to}T23:59:59.999Z`);
+  }
+
+  if (filters.sector && filters.sector !== "ALL") {
+    const source = SECTOR_SOURCES.find((s) => s.key === filters.sector);
+    if (source) {
+      const { data: sectorRows, error: sectorErr } = await supabase
+        .from(source.table)
+        .select("farmer_id");
+      if (sectorErr) throw sectorErr;
+      const ids = Array.from(
+        new Set(
+          (sectorRows as { farmer_id?: number | null }[])
+            ?.map((r) => r.farmer_id)
+            .filter((id): id is number => typeof id === "number") ?? []
+        )
+      );
+      if (ids.length === 0) {
+        return { rows: [], total: 0 };
+      }
+      query = query.in("farmer_id", ids);
+    }
+  }
+
+  query = query.range(from, to);
 
   const { data, error, count } = await query;
   if (error) throw error;
@@ -133,22 +212,6 @@ export async function findPossibleDuplicates(
 // ---------------------------------------------------------------------------
 // Cross-sector participation of the unified producer registry
 // ---------------------------------------------------------------------------
-
-export interface FarmerSectors {
-  crops: boolean;
-  livestock: boolean;
-  fisheries: boolean;
-  aquaculture: boolean;
-}
-
-type SectorKey = keyof FarmerSectors;
-
-const SECTOR_SOURCES: { key: SectorKey; table: string }[] = [
-  { key: "crops", table: "farms" },
-  { key: "livestock", table: "livestock_records" },
-  { key: "fisheries", table: "fisherfolk" },
-  { key: "aquaculture", table: "aquaculture_sites" },
-];
 
 /**
  * Resolves which agricultural sectors each producer participates in. A single

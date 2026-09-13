@@ -1,10 +1,11 @@
 import * as React from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search } from "lucide-react";
+import { Plus, RotateCcw, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DateFilterInput } from "@/components/ui/date-filter-input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -76,6 +77,10 @@ export default function PlantingPage() {
   const [toDelete, setToDelete] = React.useState<PlantingRecord | null>(null);
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState<string>("ALL");
+  const [cropFilter, setCropFilter] = React.useState<string>("ALL");
+  const [fromDate, setFromDate] = React.useState<string>("");
+  const [toDate, setToDate] = React.useState<string>("");
   const [page, setPage] = React.useState(1);
 
   React.useEffect(() => {
@@ -83,11 +88,21 @@ export default function PlantingPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  React.useEffect(() => {
+    setPage(1);
+  }, [statusFilter, cropFilter, fromDate, toDate]);
+
   const PAGE_SIZE = 12;
 
   const { data, isLoading, isError, isFetching } = useQuery({
-    queryKey: ["planting", debounced, page],
-    queryFn: () => fetchPlantingRecords(debounced, page, PAGE_SIZE),
+    queryKey: ["planting", debounced, page, statusFilter, cropFilter, fromDate, toDate],
+    queryFn: () =>
+      fetchPlantingRecords(debounced, page, PAGE_SIZE, {
+        status: statusFilter as any,
+        cropId: cropFilter === "ALL" ? "ALL" : Number(cropFilter),
+        from: fromDate || undefined,
+        to: toDate || undefined,
+      }),
     placeholderData: keepPreviousData,
   });
   const plots = useQuery({ queryKey: ["plot-options"], queryFn: fetchPlotOptions });
@@ -100,6 +115,23 @@ export default function PlantingPage() {
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["planting"] });
     qc.invalidateQueries({ queryKey: ["dashboard-summary"] });
+  };
+
+  const hasActiveFilters =
+    Boolean(search) ||
+    statusFilter !== "ALL" ||
+    cropFilter !== "ALL" ||
+    Boolean(fromDate) ||
+    Boolean(toDate);
+
+  const resetFilters = () => {
+    setSearch("");
+    setDebounced("");
+    setStatusFilter("ALL");
+    setCropFilter("ALL");
+    setFromDate("");
+    setToDate("");
+    setPage(1);
   };
 
   const saveMutation = useMutation({
@@ -172,14 +204,79 @@ export default function PlantingPage() {
         </p>
       )}
 
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search crop, plot, farm, barangay, status…"
-          className="pl-9"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="mb-4 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search crop, farm, barangay…"
+            className="w-full pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search plantings"
+          />
+        </div>
+
+        <div className="w-full sm:w-36">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger aria-label="Filter by status">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All statuses</SelectItem>
+              <SelectItem value="PLANTED">Planted</SelectItem>
+              <SelectItem value="HARVESTED">Harvested</SelectItem>
+              <SelectItem value="SPOILED">Spoiled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="w-full sm:w-44">
+          <Select value={cropFilter} onValueChange={setCropFilter}>
+            <SelectTrigger aria-label="Filter by crop">
+              <SelectValue placeholder="All crops" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All crops</SelectItem>
+              {(crops.data?.rows ?? []).map((c) => (
+                <SelectItem key={c.crop_id} value={String(c.crop_id)}>
+                  {c.crop_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="w-full sm:w-44">
+          <DateFilterInput
+            id="plant-from-date"
+            placeholder="From"
+            value={fromDate}
+            max={toDate || undefined}
+            onChange={setFromDate}
+          />
+        </div>
+        <div className="w-full sm:w-44">
+          <DateFilterInput
+            id="plant-to-date"
+            placeholder="To"
+            value={toDate}
+            min={fromDate || undefined}
+            onChange={setToDate}
+          />
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={resetFilters}
+          disabled={!hasActiveFilters}
+          title="Reset filters"
+          aria-label="Reset filters"
+          className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-40"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
       </div>
 
       <Card>
@@ -188,7 +285,21 @@ export default function PlantingPage() {
         ) : isError ? (
           <ErrorState />
         ) : records.length === 0 ? (
-          <EmptyState title="No planting records" description="Record a planting to begin monitoring." />
+          <EmptyState
+            title={hasActiveFilters ? "No planting records match your filters" : "No planting records"}
+            description={
+              hasActiveFilters
+                ? "Try clearing or adjusting your search and filter criteria."
+                : "Record a planting to begin monitoring."
+            }
+            action={
+              hasActiveFilters ? (
+                <Button onClick={resetFilters} variant="outline">
+                  Reset filters
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
           <>
             <Table>

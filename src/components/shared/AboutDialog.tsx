@@ -6,22 +6,42 @@ import {
   Code2,
   ListChecks,
   Users,
+  GraduationCap,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "./Logo";
 
 const features = [
-  { icon: Sprout, text: "Farmer profiling and crop yield inventory" },
-  { icon: ShieldCheck, text: "Data validation and duplicate prevention" },
-  { icon: FileText, text: "Automated municipal & provincial compliance reports" },
-  { icon: LineChart, text: "Analytics dashboard, statistical summaries, and yield trends" },
+  {
+    icon: Sprout,
+    title: "Farmer & Crop Registry",
+    description: "Profiling, parcel mapping & yield inventory",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Data Validation Guard",
+    description: "Duplicate prevention & verified records",
+  },
+  {
+    icon: FileText,
+    title: "Automated Compliance",
+    description: "Municipal & provincial report generation",
+  },
+  {
+    icon: LineChart,
+    title: "Analytics & Forecasts",
+    description: "Statistical summaries & harvest insights",
+  },
 ];
 
-const stack = ["React + Vite", "TypeScript", "Tailwind CSS", "Supabase / PostgreSQL"];
-const developers = [
-  { name: "Lacang-lacang", roles: ["Analyst", "Technical Writer"] },
-  { name: "Villasis", roles: ["Analyst", "Developer"] },
+const stack = [
+  "React 18",
+  "TypeScript",
+  "Tailwind CSS",
+  "Supabase",
+  "PostgreSQL",
+  "Recharts",
 ];
 
 export function AboutDialog({
@@ -33,108 +53,98 @@ export function AboutDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-5xl gap-0 overflow-hidden p-0 sm:w-full [&>button]:text-foreground/70 [&>button]:hover:text-foreground">
-        {/* Banner — adapts to light/dark */}
-        <div className="relative flex items-center gap-4 border-b bg-gradient-to-r from-emerald-100 via-emerald-50 to-emerald-100 dark:from-emerald-900/60 dark:via-emerald-950 dark:to-emerald-900/60 px-6 py-5">
-          {/* Logo in a white circle so it renders correctly on any background */}
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-black/5">
-            <Logo className="h-10 w-10" />
+      <DialogContent className="w-[94vw] sm:max-w-2xl md:max-w-3xl gap-0 overflow-hidden p-0 rounded-2xl border shadow-2xl scrollbar-none [&>button]:text-foreground/70 [&>button]:hover:text-foreground">
+        {/* Header Banner */}
+        <div className="relative border-b bg-gradient-to-r from-emerald-50 via-emerald-100/50 to-emerald-50 px-7 py-4 dark:from-emerald-950/70 dark:via-emerald-900/30 dark:to-emerald-950/70">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-black/5 dark:bg-card dark:ring-border">
+              <Logo className="h-8 w-8 object-contain" />
+            </div>
+            <div className="min-w-0 flex-1 pr-6">
+              <div className="flex items-center gap-2.5">
+                <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
+                  AGRODATA
+                </DialogTitle>
+                <Badge
+                  variant="outline"
+                  className="border-emerald-600/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:border-emerald-500/30 dark:text-emerald-300"
+                >
+                  v1.0.0
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Agricultural Data Management System · Office of the Municipal Agriculturalist · LGU Kinoguitan
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <DialogTitle className="text-lg font-bold tracking-tight text-foreground">
-              AGRODATA
-            </DialogTitle>
-            <p className="text-sm text-muted-foreground">
-              Agricultural Data Management System
-            </p>
-          </div>
-          <Badge
-            variant="secondary"
-            className="absolute right-12 top-5 shrink-0 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200"
-          >
-            v1.0.0
-          </Badge>
         </div>
 
-        <div className="space-y-5 px-6 py-5">
-          {/* About */}
-          <p className="text-justify text-sm leading-relaxed text-muted-foreground">
-            AGRODATA is a web-based agricultural data management system built for the{" "}
-            <span className="font-semibold text-foreground">
-              Office of the Municipal Agriculturalist (OMA)
-            </span>{" "}
-            of LGU Kinoguitan, Misamis Oriental. It replaces manual, paper-based record
-            keeping with a centralized digital platform for managing farmer profiles, land
-            use, and crop production — with automated reporting and data-driven analytics
-            to support evidence-based agricultural planning.
+        {/* Modal Body - Designed to fit comfortably without scrollbars across screen sizes */}
+        <div className="space-y-4 px-7 py-5 overflow-hidden scrollbar-none">
+          {/* Executive Overview */}
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            <span className="font-semibold text-foreground">AGRODATA</span> is the centralized digital agricultural management platform built for the{" "}
+            <span className="font-medium text-foreground">Office of the Municipal Agriculturalist (OMA)</span> of LGU Kinoguitan, Misamis Oriental, transitioning local agricultural operations into an automated, data-driven system.
           </p>
 
-          <div className="border-t" />
-
-          {/* Key features */}
+          {/* Key Capabilities */}
           <div>
-            <p className="mb-3 flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              <ListChecks className="h-3.5 w-3.5" /> Key Features
-            </p>
-            <div className="grid gap-2.5 sm:grid-cols-2">
-              {features.map(({ icon: Icon, text }) => (
-                <div
-                  key={text}
-                  className="flex items-start gap-2.5 rounded-lg border bg-muted/40 p-2.5 dark:bg-muted/20"
-                >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                    <Icon className="h-3.5 w-3.5" />
-                  </span>
-                  <span className="text-sm leading-snug text-foreground">{text}</span>
-                </div>
-              ))}
+            <div className="mb-2.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <ListChecks className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Core Capabilities</span>
             </div>
-          </div>
-
-          <div className="border-t" />
-
-          {/* Tech stack */}
-          <div className="text-center">
-            <p className="mb-3 flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              <Code2 className="h-3.5 w-3.5" /> Technology
-            </p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {stack.map((s) => (
-                <Badge key={s} variant="secondary">
-                  {s}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          <div className="border-t" />
-
-          {/* Developer credit */}
-          <div className="text-center">
-            <p className="mb-3 flex items-center justify-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              <Users className="h-3.5 w-3.5" /> Developer
-            </p>
-            <div className="mx-auto grid max-w-2xl gap-2.5 sm:grid-cols-2">
-              {developers.map((dev) => (
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              {features.map(({ icon: Icon, title, description }) => (
                 <div
-                  key={dev.name}
-                  className="rounded-lg border bg-muted/40 p-3 text-center dark:bg-muted/20"
+                  key={title}
+                  className="flex items-center gap-3 rounded-lg border border-border/60 bg-card/60 px-3.5 py-2.5 transition-colors hover:border-emerald-500/30"
                 >
-                  <p className="font-semibold text-foreground">{dev.name}</p>
-                  <div className="mt-1.5 flex flex-wrap justify-center gap-1.5">
-                    {dev.roles.map((role) => (
-                      <Badge key={role} variant="secondary">
-                        {role}
-                      </Badge>
-                    ))}
+                  <Icon className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-foreground">{title}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground truncate">
+                      {description}
+                    </p>
                   </div>
                 </div>
               ))}
             </div>
-            <p className="mt-4 text-xs text-muted-foreground">Capstone Project Proponents</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Liceo de Cagayan University · College of Information Technology
-            </p>
+          </div>
+
+          {/* Technology Stack */}
+          <div>
+            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <Code2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Technology Architecture</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {stack.map((item) => (
+                <span
+                  key={item}
+                  className="rounded-md border border-border/50 bg-secondary/60 px-2.5 py-1 text-xs font-medium text-secondary-foreground"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Proponents & Academic Attribution */}
+          <div className="rounded-xl border border-border/60 bg-muted/20 p-3 dark:bg-muted/10">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="font-semibold text-foreground">Developers:</span>
+                <span className="text-muted-foreground">
+                  <span className="font-medium text-foreground">Lacang-lacang</span> (Analyst, Tech Writer) ·{" "}
+                  <span className="font-medium text-foreground">Villasis</span> (Analyst, Developer)
+                </span>
+              </div>
+            </div>
+            <div className="mt-2.5 flex items-center gap-2 border-t border-border/40 pt-2 text-xs text-muted-foreground">
+              <GraduationCap className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>Capstone Project Proponents · Liceo de Cagayan University · College of Information Technology</span>
+            </div>
           </div>
         </div>
       </DialogContent>

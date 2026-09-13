@@ -27,7 +27,7 @@ export function Sidebar({ onNavigate, collapsed = false, autoFocus = false }: Si
     <aside
       aria-label="Main navigation"
       className={cn(
-        "flex h-full flex-col overflow-hidden border-r transition-[width] duration-300 ease-in-out",
+        "flex h-full flex-col overflow-hidden border-r transition-[width] duration-300 ease-in-out scrollbar-none",
         "bg-gradient-to-b from-emerald-50 via-emerald-100 to-emerald-200 dark:from-emerald-950 dark:via-emerald-900 dark:to-emerald-950",
         collapsed ? "w-16" : "w-64"
       )}
@@ -44,7 +44,7 @@ export function Sidebar({ onNavigate, collapsed = false, autoFocus = false }: Si
         </div>
       </div>
 
-      <nav ref={navRef} className="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-4">
+      <nav ref={navRef} className="flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-3 py-4 scrollbar-none">
         {navSections.map((section, index) => {
           const items = section.items.filter((i) => !i.adminOnly || isAdmin);
           if (items.length === 0) return null;

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { Plus, RotateCcw, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -139,7 +139,39 @@ function UnitsCard() {
     setDialogOpen(true);
   };
 
+  const [search, setSearch] = React.useState("");
+  const [dimensionFilter, setDimensionFilter] = React.useState("ALL");
+  const [statusFilter, setStatusFilter] = React.useState("ALL");
   const rows = data ?? [];
+
+  const filteredRows = React.useMemo(() => {
+    let list = rows;
+    if (dimensionFilter !== "ALL") {
+      list = list.filter((u) => u.dimension === dimensionFilter);
+    }
+    if (statusFilter !== "ALL") {
+      const active = statusFilter === "ACTIVE";
+      list = list.filter((u) => u.active === active);
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(
+        (u) =>
+          u.unit_name.toLowerCase().includes(q) ||
+          (u.dimension?.toLowerCase() ?? "").includes(q)
+      );
+    }
+    return list;
+  }, [rows, search, dimensionFilter, statusFilter]);
+
+  const hasActiveFilters = Boolean(
+    search || dimensionFilter !== "ALL" || statusFilter !== "ALL"
+  );
+  const resetFilters = () => {
+    setSearch("");
+    setDimensionFilter("ALL");
+    setStatusFilter("ALL");
+  };
 
   return (
     <Card>
@@ -153,12 +185,75 @@ function UnitsCard() {
         </Button>
       </CardHeader>
       <CardContent>
+        <div className="mb-4 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+          <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search unit name or dimension…"
+              className="w-full pl-9"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Search units"
+            />
+          </div>
+          <div className="w-full sm:w-44">
+            <Select value={dimensionFilter} onValueChange={setDimensionFilter}>
+              <SelectTrigger aria-label="Filter by dimension">
+                <SelectValue placeholder="All dimensions" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All dimensions</SelectItem>
+                {DIMENSIONS.map((d) => (
+                  <SelectItem key={d} value={d}>
+                    {d}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-full sm:w-36">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger aria-label="Filter by status">
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All statuses</SelectItem>
+                <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="INACTIVE">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={resetFilters}
+            disabled={!hasActiveFilters}
+            title="Reset filters"
+            aria-label="Reset filters"
+            className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-40"
+          >
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+        </div>
         {isLoading ? (
           <LoadingState label="Loading units…" />
         ) : isError ? (
           <ErrorState />
         ) : rows.length === 0 ? (
           <EmptyState title="No units yet" description="Add the units your office records." />
+        ) : filteredRows.length === 0 ? (
+          <EmptyState
+            title="No matching units"
+            description="Try clearing your filters or changing your search."
+            action={
+              hasActiveFilters ? (
+                <Button onClick={resetFilters} variant="outline" size="sm">
+                  Reset filters
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
           <div className="overflow-x-auto rounded-md border">
             <Table>
@@ -171,7 +266,7 @@ function UnitsCard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((u) => (
+                {filteredRows.map((u) => (
                   <TableRow key={u.unit_id}>
                     <TableCell className="font-medium">{u.unit_name}</TableCell>
                     <TableCell>{u.dimension ?? "—"}</TableCell>
@@ -361,7 +456,32 @@ function AquaticSpeciesCard() {
     setDialogOpen(true);
   };
 
+  const [search, setSearch] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState("ALL");
   const rows = data ?? [];
+
+  const filteredRows = React.useMemo(() => {
+    let list = rows;
+    if (statusFilter !== "ALL") {
+      const active = statusFilter === "ACTIVE";
+      list = list.filter((s) => s.active === active);
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(
+        (s) =>
+          s.common_name.toLowerCase().includes(q) ||
+          (s.scientific_name?.toLowerCase() ?? "").includes(q)
+      );
+    }
+    return list;
+  }, [rows, search, statusFilter]);
+
+  const hasActiveFilters = Boolean(search || statusFilter !== "ALL");
+  const resetFilters = () => {
+    setSearch("");
+    setStatusFilter("ALL");
+  };
 
   return (
     <Card>
@@ -375,12 +495,60 @@ function AquaticSpeciesCard() {
         </Button>
       </CardHeader>
       <CardContent>
+        <div className="mb-4 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+          <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search common or scientific species name…"
+              className="w-full pl-9"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Search aquatic species"
+            />
+          </div>
+          <div className="w-full sm:w-36">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger aria-label="Filter by status">
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All statuses</SelectItem>
+                <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="INACTIVE">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={resetFilters}
+            disabled={!hasActiveFilters}
+            title="Reset filters"
+            aria-label="Reset filters"
+            className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-40"
+          >
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+        </div>
         {isLoading ? (
           <LoadingState label="Loading species…" />
         ) : isError ? (
           <ErrorState />
         ) : rows.length === 0 ? (
           <EmptyState title="No species yet" description="Add the aquatic species your office records." />
+        ) : filteredRows.length === 0 ? (
+          <EmptyState
+            title="No matching species"
+            description="Try clearing your filters or changing your search."
+            action={
+              hasActiveFilters ? (
+                <Button onClick={resetFilters} variant="outline" size="sm">
+                  Reset filters
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
           <div className="overflow-x-auto rounded-md border">
             <Table>
@@ -393,7 +561,7 @@ function AquaticSpeciesCard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((s) => (
+                {filteredRows.map((s) => (
                   <TableRow key={s.aqua_species_id}>
                     <TableCell className="font-medium">{s.common_name}</TableCell>
                     <TableCell className="italic text-muted-foreground">

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search } from "lucide-react";
+import { Plus, RotateCcw, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,7 +40,9 @@ import {
   createAquacultureSite,
   deleteAquacultureSite,
   fetchAquacultureSites,
+  fetchDistinctSiteBarangays,
   updateAquacultureSite,
+  type AquacultureSiteFilters,
   type AquacultureSiteInput,
 } from "@/features/aquaculture";
 import { fetchFarmerOptions } from "@/features/farmers";
@@ -64,6 +66,9 @@ export default function AquacultureSitesPage() {
   const { profile } = useAuth();
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
+  const [barangayFilter, setBarangayFilter] = React.useState("ALL");
+  const [siteTypeFilter, setSiteTypeFilter] = React.useState("ALL");
+  const [environmentFilter, setEnvironmentFilter] = React.useState("ALL");
   const [page, setPage] = React.useState(1);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<AquacultureSite | null>(null);
@@ -78,16 +83,55 @@ export default function AquacultureSitesPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  React.useEffect(() => {
+    setPage(1);
+  }, [barangayFilter, siteTypeFilter, environmentFilter]);
+
   const PAGE_SIZE = 12;
 
+  const filters = React.useMemo<AquacultureSiteFilters>(
+    () => ({
+      barangay: barangayFilter === "ALL" ? undefined : barangayFilter,
+      siteType: siteTypeFilter === "ALL" ? undefined : (siteTypeFilter as AquaSiteType),
+      environment:
+        environmentFilter === "ALL"
+          ? undefined
+          : (environmentFilter as WaterEnvironment),
+    }),
+    [barangayFilter, siteTypeFilter, environmentFilter]
+  );
+
   const { data, isLoading, isError, isFetching } = useQuery({
-    queryKey: ["aqua-sites", debounced, page],
-    queryFn: () => fetchAquacultureSites(debounced, page, PAGE_SIZE),
+    queryKey: ["aqua-sites", debounced, page, filters],
+    queryFn: () => fetchAquacultureSites(debounced, page, PAGE_SIZE, filters),
     placeholderData: keepPreviousData,
   });
   const farmers = useQuery({ queryKey: ["farmer-options"], queryFn: fetchFarmerOptions });
+  const barangays = useQuery({
+    queryKey: ["aqua-site-barangays"],
+    queryFn: fetchDistinctSiteBarangays,
+  });
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["aqua-sites"] });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["aqua-sites"] });
+    qc.invalidateQueries({ queryKey: ["aqua-site-barangays"] });
+  };
+
+  const hasActiveFilters = Boolean(
+    debounced ||
+      barangayFilter !== "ALL" ||
+      siteTypeFilter !== "ALL" ||
+      environmentFilter !== "ALL"
+  );
+
+  const resetFilters = () => {
+    setSearch("");
+    setDebounced("");
+    setBarangayFilter("ALL");
+    setSiteTypeFilter("ALL");
+    setEnvironmentFilter("ALL");
+    setPage(1);
+  };
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const rows = data?.rows ?? [];
@@ -165,14 +209,74 @@ export default function AquacultureSitesPage() {
         </Button>
       </PageHeader>
 
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search site or barangay…"
-          className="pl-9"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="mb-4 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search site name or barangay…"
+            className="w-full pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search sites"
+          />
+        </div>
+        <div className="w-full sm:w-44">
+          <Select value={barangayFilter} onValueChange={setBarangayFilter}>
+            <SelectTrigger aria-label="Filter by barangay">
+              <SelectValue placeholder="All barangays" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All barangays</SelectItem>
+              {(barangays.data ?? []).map((b) => (
+                <SelectItem key={b} value={b}>
+                  {b}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-full sm:w-40">
+          <Select value={siteTypeFilter} onValueChange={setSiteTypeFilter}>
+            <SelectTrigger aria-label="Filter by type">
+              <SelectValue placeholder="All types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All types</SelectItem>
+              {SITE_TYPES.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-full sm:w-44">
+          <Select value={environmentFilter} onValueChange={setEnvironmentFilter}>
+            <SelectTrigger aria-label="Filter by environment">
+              <SelectValue placeholder="All environments" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All environments</SelectItem>
+              {ENVIRONMENTS.map((env) => (
+                <SelectItem key={env} value={env}>
+                  {env}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={resetFilters}
+          disabled={!hasActiveFilters}
+          title="Reset filters"
+          aria-label="Reset filters"
+          className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-40"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
       </div>
 
       <Card>
@@ -181,7 +285,21 @@ export default function AquacultureSitesPage() {
         ) : isError ? (
           <ErrorState />
         ) : rows.length === 0 ? (
-          <EmptyState title="No aquaculture sites" description="Add the first site to begin." />
+          <EmptyState
+            title={hasActiveFilters ? "No aquaculture sites match your filters" : "No aquaculture sites"}
+            description={
+              hasActiveFilters
+                ? "Try clearing your filters or changing your search."
+                : "Add the first site to begin."
+            }
+            action={
+              hasActiveFilters ? (
+                <Button onClick={resetFilters} variant="outline" size="sm">
+                  Reset filters
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
           <>
             <Table>

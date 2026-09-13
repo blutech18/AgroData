@@ -1,6 +1,6 @@
 import * as React from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search } from "lucide-react";
+import { Plus, RotateCcw, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,9 +39,11 @@ import { logActivity } from "@/lib/audit";
 import {
   createFisherfolk,
   deleteFisherfolk,
+  fetchDistinctFisherfolkBarangays,
   fetchFisherfolk,
   fetchRegisteredFisherfolkFarmerIds,
   updateFisherfolk,
+  type FisherfolkFilters,
   type FisherfolkInput,
 } from "@/features/fisheries";
 import { fetchFarmerOptions } from "@/features/farmers";
@@ -61,6 +63,8 @@ export default function FisherfolkPage() {
   const { profile } = useAuth();
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
+  const [barangayFilter, setBarangayFilter] = React.useState("ALL");
+  const [involvementFilter, setInvolvementFilter] = React.useState("ALL");
   const [page, setPage] = React.useState(1);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Fisherfolk | null>(null);
@@ -75,11 +79,26 @@ export default function FisherfolkPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  React.useEffect(() => {
+    setPage(1);
+  }, [barangayFilter, involvementFilter]);
+
   const PAGE_SIZE = 12;
 
+  const filters = React.useMemo<FisherfolkFilters>(
+    () => ({
+      barangay: barangayFilter === "ALL" ? undefined : barangayFilter,
+      involvement:
+        involvementFilter === "ALL"
+          ? undefined
+          : (involvementFilter as FishingInvolvement),
+    }),
+    [barangayFilter, involvementFilter]
+  );
+
   const { data, isLoading, isError, isFetching } = useQuery({
-    queryKey: ["fisherfolk", debounced, page],
-    queryFn: () => fetchFisherfolk(debounced, page, PAGE_SIZE),
+    queryKey: ["fisherfolk", debounced, page, filters],
+    queryFn: () => fetchFisherfolk(debounced, page, PAGE_SIZE, filters),
     placeholderData: keepPreviousData,
   });
   const farmers = useQuery({ queryKey: ["farmer-options"], queryFn: fetchFarmerOptions });
@@ -87,10 +106,27 @@ export default function FisherfolkPage() {
     queryKey: ["fisherfolk-registered-ids"],
     queryFn: fetchRegisteredFisherfolkFarmerIds,
   });
+  const barangays = useQuery({
+    queryKey: ["fisherfolk-barangays"],
+    queryFn: fetchDistinctFisherfolkBarangays,
+  });
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["fisherfolk"] });
     qc.invalidateQueries({ queryKey: ["fisherfolk-registered-ids"] });
+    qc.invalidateQueries({ queryKey: ["fisherfolk-barangays"] });
+  };
+
+  const hasActiveFilters = Boolean(
+    debounced || barangayFilter !== "ALL" || involvementFilter !== "ALL"
+  );
+
+  const resetFilters = () => {
+    setSearch("");
+    setDebounced("");
+    setBarangayFilter("ALL");
+    setInvolvementFilter("ALL");
+    setPage(1);
   };
 
   // In create mode, hide producers that already have a profile (one per
@@ -180,14 +216,56 @@ export default function FisherfolkPage() {
         </Button>
       </PageHeader>
 
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search barangay…"
-          className="pl-9"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="mb-4 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search barangay, vessel, gear…"
+            className="w-full pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search fisherfolk"
+          />
+        </div>
+        <div className="w-full sm:w-48">
+          <Select value={barangayFilter} onValueChange={setBarangayFilter}>
+            <SelectTrigger aria-label="Filter by barangay">
+              <SelectValue placeholder="All barangays" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All barangays</SelectItem>
+              {(barangays.data ?? []).map((b) => (
+                <SelectItem key={b} value={b}>
+                  {b}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-full sm:w-44">
+          <Select value={involvementFilter} onValueChange={setInvolvementFilter}>
+            <SelectTrigger aria-label="Filter by involvement">
+              <SelectValue placeholder="All involvements" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All involvements</SelectItem>
+              <SelectItem value="FULL_TIME">Full-time</SelectItem>
+              <SelectItem value="PART_TIME">Part-time</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={resetFilters}
+          disabled={!hasActiveFilters}
+          title="Reset filters"
+          aria-label="Reset filters"
+          className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-40"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
       </div>
 
       <Card>
@@ -196,7 +274,21 @@ export default function FisherfolkPage() {
         ) : isError ? (
           <ErrorState />
         ) : rows.length === 0 ? (
-          <EmptyState title="No fisherfolk yet" description="Register the first fisherfolk." />
+          <EmptyState
+            title={hasActiveFilters ? "No fisherfolk match your filters" : "No fisherfolk yet"}
+            description={
+              hasActiveFilters
+                ? "Try clearing your filters or changing your search."
+                : "Register the first fisherfolk."
+            }
+            action={
+              hasActiveFilters ? (
+                <Button onClick={resetFilters} variant="outline" size="sm">
+                  Reset filters
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
           <>
             <Table>

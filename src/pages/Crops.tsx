@@ -1,6 +1,6 @@
 import * as React from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search } from "lucide-react";
+import { Plus, RotateCcw, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { LoadingState, EmptyState, ErrorState } from "@/components/shared/states";
 import { RowActions } from "@/components/shared/RowActions";
@@ -33,6 +40,7 @@ import {
   createCrop,
   deleteCrop,
   fetchCrops,
+  fetchDistinctCropCategories,
   updateCrop,
   type CropInput,
 } from "@/features/crops";
@@ -50,6 +58,7 @@ export default function CropsPage() {
   const [toDelete, setToDelete] = React.useState<Crop | null>(null);
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
+  const [categoryFilter, setCategoryFilter] = React.useState<string>("ALL");
   const [page, setPage] = React.useState(1);
 
   React.useEffect(() => {
@@ -57,14 +66,39 @@ export default function CropsPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  React.useEffect(() => {
+    setPage(1);
+  }, [categoryFilter]);
+
   const PAGE_SIZE = 12;
 
+  const categoryQuery = useQuery({
+    queryKey: ["crop-categories"],
+    queryFn: fetchDistinctCropCategories,
+  });
+  const categoryList = categoryQuery.data ?? [];
+
   const { data, isLoading, isError, isFetching } = useQuery({
-    queryKey: ["crops", debounced, page],
-    queryFn: () => fetchCrops(debounced, page, PAGE_SIZE),
+    queryKey: ["crops", debounced, page, categoryFilter],
+    queryFn: () =>
+      fetchCrops(debounced, page, PAGE_SIZE, {
+        category: categoryFilter,
+      }),
     placeholderData: keepPreviousData,
   });
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["crops"] });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["crops"] });
+    qc.invalidateQueries({ queryKey: ["crop-categories"] });
+  };
+
+  const hasActiveFilters = Boolean(search) || categoryFilter !== "ALL";
+
+  const resetFilters = () => {
+    setSearch("");
+    setDebounced("");
+    setCategoryFilter("ALL");
+    setPage(1);
+  };
 
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -132,14 +166,46 @@ export default function CropsPage() {
         </Button>
       </PageHeader>
 
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search crop or category…"
-          className="pl-9"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="mb-4 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search crop name…"
+            className="w-full pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search crops"
+          />
+        </div>
+
+        <div className="w-full sm:w-48">
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger aria-label="Filter by category">
+              <SelectValue placeholder="All categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All categories</SelectItem>
+              {categoryList.map((cat) => (
+                <SelectItem key={cat} value={cat}>
+                  {cat}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={resetFilters}
+          disabled={!hasActiveFilters}
+          title="Reset filters"
+          aria-label="Reset filters"
+          className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-40"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
       </div>
 
       <Card>
@@ -148,7 +214,25 @@ export default function CropsPage() {
         ) : isError ? (
           <ErrorState />
         ) : crops.length === 0 ? (
-          <EmptyState title="No crops yet" description="Add crop types to begin." />
+          <EmptyState
+            title={hasActiveFilters ? "No crops match your filters" : "No crops yet"}
+            description={
+              hasActiveFilters
+                ? "Try clearing or adjusting your search and filter criteria."
+                : "Add crop types to begin."
+            }
+            action={
+              hasActiveFilters ? (
+                <Button onClick={resetFilters} variant="outline">
+                  Reset filters
+                </Button>
+              ) : (
+                <Button onClick={openCreate} variant="outline">
+                  <Plus className="h-4 w-4" /> Add Crop
+                </Button>
+              )
+            }
+          />
         ) : (
           <>
             <Table>

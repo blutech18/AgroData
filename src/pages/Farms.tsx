@@ -1,6 +1,6 @@
 import * as React from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search } from "lucide-react";
+import { Plus, RotateCcw, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,12 +40,13 @@ import { formatNumber } from "@/lib/utils";
 import {
   createFarm,
   deleteFarm,
+  fetchDistinctFarmBarangays,
   fetchFarmerOptions,
   fetchFarms,
   updateFarm,
   type FarmInput,
 } from "@/features/farms";
-import type { Farm } from "@/types/database";
+import type { Farm, IrrigationType, SoilType } from "@/types/database";
 
 const emptyForm: FarmInput = {
   farmer_id: 0,
@@ -62,6 +63,9 @@ export default function FarmsPage() {
   const { profile } = useAuth();
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
+  const [barangayFilter, setBarangayFilter] = React.useState<string>("ALL");
+  const [soilFilter, setSoilFilter] = React.useState<string>("ALL");
+  const [irrigationFilter, setIrrigationFilter] = React.useState<string>("ALL");
   const [page, setPage] = React.useState(1);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Farm | null>(null);
@@ -73,11 +77,26 @@ export default function FarmsPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  React.useEffect(() => {
+    setPage(1);
+  }, [barangayFilter, soilFilter, irrigationFilter]);
+
   const PAGE_SIZE = 12;
 
+  const barangayQuery = useQuery({
+    queryKey: ["farm-barangays"],
+    queryFn: fetchDistinctFarmBarangays,
+  });
+  const barangayList = barangayQuery.data ?? [];
+
   const { data, isLoading, isError, isFetching } = useQuery({
-    queryKey: ["farms", debounced, page],
-    queryFn: () => fetchFarms(debounced, page, PAGE_SIZE),
+    queryKey: ["farms", debounced, page, barangayFilter, soilFilter, irrigationFilter],
+    queryFn: () =>
+      fetchFarms(debounced, page, PAGE_SIZE, {
+        barangay: barangayFilter,
+        soilType: soilFilter as SoilType | "ALL",
+        irrigationType: irrigationFilter as IrrigationType | "ALL",
+      }),
     placeholderData: keepPreviousData,
   });
   const farmerOptions = useQuery({ queryKey: ["farmer-options"], queryFn: fetchFarmerOptions });
@@ -86,7 +105,26 @@ export default function FarmsPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const farms = data?.rows ?? [];
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["farms"] });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["farms"] });
+    qc.invalidateQueries({ queryKey: ["farm-barangays"] });
+    qc.invalidateQueries({ queryKey: ["farm-options"] });
+  };
+
+  const hasActiveFilters =
+    Boolean(search) ||
+    barangayFilter !== "ALL" ||
+    soilFilter !== "ALL" ||
+    irrigationFilter !== "ALL";
+
+  const resetFilters = () => {
+    setSearch("");
+    setDebounced("");
+    setBarangayFilter("ALL");
+    setSoilFilter("ALL");
+    setIrrigationFilter("ALL");
+    setPage(1);
+  };
 
   const saveMutation = useMutation({
     mutationFn: () => (editing ? updateFarm(editing.farm_id, form) : createFarm(form)),
@@ -154,14 +192,73 @@ export default function FarmsPage() {
         </p>
       )}
 
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search farm name or barangay…"
-          className="pl-9"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="mb-4 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search farm name, owner…"
+            className="w-full pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search farms"
+          />
+        </div>
+
+        <div className="w-full sm:w-44">
+          <Select value={barangayFilter} onValueChange={setBarangayFilter}>
+            <SelectTrigger aria-label="Filter by barangay">
+              <SelectValue placeholder="All barangays" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All barangays</SelectItem>
+              {barangayList.map((b) => (
+                <SelectItem key={b} value={b}>
+                  {b}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="w-full sm:w-36">
+          <Select value={soilFilter} onValueChange={setSoilFilter}>
+            <SelectTrigger aria-label="Filter by soil type">
+              <SelectValue placeholder="All soil types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All soil types</SelectItem>
+              <SelectItem value="CLAY">Clay</SelectItem>
+              <SelectItem value="LOAM">Loam</SelectItem>
+              <SelectItem value="SANDY">Sandy</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="w-full sm:w-40">
+          <Select value={irrigationFilter} onValueChange={setIrrigationFilter}>
+            <SelectTrigger aria-label="Filter by irrigation">
+              <SelectValue placeholder="All irrigation" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All irrigation</SelectItem>
+              <SelectItem value="IRRIGATED">Irrigated</SelectItem>
+              <SelectItem value="RAINFED">Rainfed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={resetFilters}
+          disabled={!hasActiveFilters}
+          title="Reset filters"
+          aria-label="Reset filters"
+          className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-40"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
       </div>
 
       <Card>
@@ -170,7 +267,21 @@ export default function FarmsPage() {
         ) : isError ? (
           <ErrorState />
         ) : farms.length === 0 ? (
-          <EmptyState title="No farms found" description="Add a farm to start tracking land use." />
+          <EmptyState
+            title={hasActiveFilters ? "No farms match your filters" : "No farms found"}
+            description={
+              hasActiveFilters
+                ? "Try clearing or adjusting your search and filter criteria."
+                : "Add a farm to start tracking land use."
+            }
+            action={
+              hasActiveFilters ? (
+                <Button onClick={resetFilters} variant="outline">
+                  Reset filters
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
           <>
             <Table>

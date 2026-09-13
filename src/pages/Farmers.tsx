@@ -1,10 +1,11 @@
 import * as React from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search } from "lucide-react";
+import { Plus, RotateCcw, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DateFilterInput } from "@/components/ui/date-filter-input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -40,6 +41,7 @@ import { formatDate } from "@/lib/utils";
 import {
   createFarmer,
   deleteFarmer,
+  fetchDistinctBarangays,
   fetchFarmerSectors,
   fetchFarmers,
   findPossibleDuplicates,
@@ -47,7 +49,7 @@ import {
   type FarmerInput,
   type FarmerSectors,
 } from "@/features/farmers";
-import type { Farmer } from "@/types/database";
+import type { Farmer, Sex } from "@/types/database";
 
 const SECTOR_LABELS: { key: keyof FarmerSectors; label: string }[] = [
   { key: "crops", label: "Crops" },
@@ -72,6 +74,11 @@ export default function FarmersPage() {
   const { profile } = useAuth();
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
+  const [sectorFilter, setSectorFilter] = React.useState<string>("ALL");
+  const [barangayFilter, setBarangayFilter] = React.useState<string>("ALL");
+  const [sexFilter, setSexFilter] = React.useState<string>("ALL");
+  const [fromDate, setFromDate] = React.useState<string>("");
+  const [toDate, setToDate] = React.useState<string>("");
   const [page, setPage] = React.useState(1);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Farmer | null>(null);
@@ -85,11 +92,37 @@ export default function FarmersPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  React.useEffect(() => {
+    setPage(1);
+  }, [sectorFilter, barangayFilter, sexFilter, fromDate, toDate]);
+
   const PAGE_SIZE = 12;
 
+  const barangayQuery = useQuery({
+    queryKey: ["farmer-barangays"],
+    queryFn: fetchDistinctBarangays,
+  });
+  const barangayList = barangayQuery.data ?? [];
+
   const { data, isLoading, isError, isFetching } = useQuery({
-    queryKey: ["farmers", debounced, page],
-    queryFn: () => fetchFarmers(debounced, page, PAGE_SIZE),
+    queryKey: [
+      "farmers",
+      debounced,
+      page,
+      sectorFilter,
+      barangayFilter,
+      sexFilter,
+      fromDate,
+      toDate,
+    ],
+    queryFn: () =>
+      fetchFarmers(debounced, page, PAGE_SIZE, {
+        sector: sectorFilter as keyof FarmerSectors | "ALL",
+        barangay: barangayFilter,
+        sex: sexFilter as Sex | "ALL",
+        from: fromDate || undefined,
+        to: toDate || undefined,
+      }),
     placeholderData: keepPreviousData,
   });
 
@@ -109,7 +142,28 @@ export default function FarmersPage() {
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["farmers"] });
-    qc.invalidateQueries({ queryKey: ["farmer-sectors"] });
+    qc.invalidateQueries({ queryKey: ["farmer-barangays"] });
+    qc.invalidateQueries({ queryKey: ["farmer-options"] });
+    qc.invalidateQueries({ queryKey: ["dashboard-summary"] });
+  };
+
+  const hasActiveFilters =
+    Boolean(search) ||
+    sectorFilter !== "ALL" ||
+    barangayFilter !== "ALL" ||
+    sexFilter !== "ALL" ||
+    Boolean(fromDate) ||
+    Boolean(toDate);
+
+  const resetFilters = () => {
+    setSearch("");
+    setDebounced("");
+    setSectorFilter("ALL");
+    setBarangayFilter("ALL");
+    setSexFilter("ALL");
+    setFromDate("");
+    setToDate("");
+    setPage(1);
   };
 
   const saveMutation = useMutation({
@@ -228,14 +282,94 @@ export default function FarmersPage() {
         </Button>
       </PageHeader>
 
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search name, barangay, contact…"
-          className="pl-9"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="mb-4 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search farmer name, contact…"
+            className="w-full pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search farmers"
+          />
+        </div>
+
+        <div className="w-full sm:w-36">
+          <Select value={sectorFilter} onValueChange={setSectorFilter}>
+            <SelectTrigger aria-label="Filter by sector">
+              <SelectValue placeholder="All sectors" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All sectors</SelectItem>
+              {SECTOR_LABELS.map((s) => (
+                <SelectItem key={s.key} value={s.key}>
+                  {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="w-full sm:w-44">
+          <Select value={barangayFilter} onValueChange={setBarangayFilter}>
+            <SelectTrigger aria-label="Filter by barangay">
+              <SelectValue placeholder="All barangays" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All barangays</SelectItem>
+              {barangayList.map((b) => (
+                <SelectItem key={b} value={b}>
+                  {b}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="w-full sm:w-32">
+          <Select value={sexFilter} onValueChange={setSexFilter}>
+            <SelectTrigger aria-label="Filter by sex">
+              <SelectValue placeholder="All sexes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All sexes</SelectItem>
+              <SelectItem value="MALE">Male</SelectItem>
+              <SelectItem value="FEMALE">Female</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="w-full sm:w-44">
+          <DateFilterInput
+            id="reg-from-date"
+            placeholder="From"
+            value={fromDate}
+            max={toDate || undefined}
+            onChange={setFromDate}
+          />
+        </div>
+        <div className="w-full sm:w-44">
+          <DateFilterInput
+            id="reg-to-date"
+            placeholder="To"
+            value={toDate}
+            min={fromDate || undefined}
+            onChange={setToDate}
+          />
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={resetFilters}
+          disabled={!hasActiveFilters}
+          title="Reset filters"
+          aria-label="Reset filters"
+          className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-40"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
       </div>
 
       <Card>
@@ -245,12 +379,22 @@ export default function FarmersPage() {
           <ErrorState />
         ) : farmers.length === 0 ? (
           <EmptyState
-            title="No farmers found"
-            description="Register the first farmer to get started."
+            title={hasActiveFilters ? "No farmers match your filters" : "No farmers found"}
+            description={
+              hasActiveFilters
+                ? "Try clearing or adjusting your search and filter criteria."
+                : "Register the first farmer to get started."
+            }
             action={
-              <Button onClick={openCreate} variant="outline">
-                <Plus className="h-4 w-4" /> Register Farmer
-              </Button>
+              hasActiveFilters ? (
+                <Button onClick={resetFilters} variant="outline">
+                  Reset filters
+                </Button>
+              ) : (
+                <Button onClick={openCreate} variant="outline">
+                  <Plus className="h-4 w-4" /> Register Farmer
+                </Button>
+              )
             }
           />
         ) : (
@@ -260,7 +404,7 @@ export default function FarmersPage() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Sex</TableHead>
-                <TableHead>Sectors</TableHead>
+                <TableHead className="text-center">Sectors</TableHead>
                 <TableHead>Barangay</TableHead>
                 <TableHead>Contact</TableHead>
                 <TableHead>Registered</TableHead>
@@ -276,18 +420,18 @@ export default function FarmersPage() {
                   <TableCell>
                     <Badge variant="secondary">{f.sex}</Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-center">
                     {(() => {
                       const active = SECTOR_LABELS.filter(
                         (s) => sectors?.[f.farmer_id]?.[s.key]
                       );
                       if (active.length === 0) {
                         return (
-                          <span className="text-xs text-muted-foreground">No records yet</span>
+                          <span className="block text-center text-xs text-muted-foreground">No records yet</span>
                         );
                       }
                       return (
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap items-center justify-center gap-1">
                           {active.map((s) => (
                             <Badge key={s.key}>{s.label}</Badge>
                           ))}

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { Plus, RotateCcw, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,8 @@ export default function LivestockSpeciesPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const { profile } = useAuth();
+  const [search, setSearch] = React.useState("");
+  const [categoryFilter, setCategoryFilter] = React.useState("ALL");
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<LivestockSpecies | null>(null);
   const [form, setForm] = React.useState<SpeciesInput>(emptyForm);
@@ -62,6 +64,29 @@ export default function LivestockSpeciesPage() {
   });
   const invalidate = () => qc.invalidateQueries({ queryKey: ["livestock-species"] });
   const species = data ?? [];
+
+  const filteredSpecies = React.useMemo(() => {
+    let list = species;
+    if (categoryFilter !== "ALL") {
+      list = list.filter((s) => s.category === categoryFilter);
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(
+        (s) =>
+          s.species_name.toLowerCase().includes(q) ||
+          s.category.toLowerCase().includes(q) ||
+          (s.primary_product?.toLowerCase() ?? "").includes(q)
+      );
+    }
+    return list;
+  }, [species, search, categoryFilter]);
+
+  const hasActiveFilters = Boolean(search || categoryFilter !== "ALL");
+  const resetFilters = () => {
+    setSearch("");
+    setCategoryFilter("ALL");
+  };
 
   const saveMutation = useMutation({
     mutationFn: () =>
@@ -133,6 +158,43 @@ export default function LivestockSpeciesPage() {
         </Button>
       </PageHeader>
 
+      <div className="mb-4 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search species name, category, or product…"
+            className="w-full pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search species"
+          />
+        </div>
+        <div className="w-full sm:w-48">
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger aria-label="Filter by category">
+              <SelectValue placeholder="All categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All categories</SelectItem>
+              <SelectItem value="LIVESTOCK">Livestock</SelectItem>
+              <SelectItem value="POULTRY">Poultry</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={resetFilters}
+          disabled={!hasActiveFilters}
+          title="Reset filters"
+          aria-label="Reset filters"
+          className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-40"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
+      </div>
+
       <Card>
         {isLoading ? (
           <LoadingState />
@@ -140,6 +202,18 @@ export default function LivestockSpeciesPage() {
           <ErrorState />
         ) : species.length === 0 ? (
           <EmptyState title="No species yet" description="Add animal species to begin." />
+        ) : filteredSpecies.length === 0 ? (
+          <EmptyState
+            title="No matching species"
+            description="Try clearing your filters or changing your search."
+            action={
+              hasActiveFilters ? (
+                <Button onClick={resetFilters} variant="outline" size="sm">
+                  Reset filters
+                </Button>
+              ) : undefined
+            }
+          />
         ) : (
           <Table>
             <TableHeader>
@@ -151,7 +225,7 @@ export default function LivestockSpeciesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {species.map((s) => (
+              {filteredSpecies.map((s) => (
                 <TableRow key={s.species_id}>
                   <TableCell className="font-medium">{s.species_name}</TableCell>
                   <TableCell>
